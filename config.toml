@@ -80,8 +80,8 @@ licenseLink = "http://creativecommons.org/licenses/by-nc-sa/4.0/"
 
 # Comments
 # utterances, see: https://utteranc.es/
-# utterancesRepo = "*/*"
-# utterancesIssueTerm = "pathname"
+utterancesRepo = "daemon365/daemon365.github.io"
+utterancesIssueTerm = "pathname"
 
 # Disqus, see: https://disqus.com/admin/install/platforms/universalcode/
 # disqusShortname = "*********"
