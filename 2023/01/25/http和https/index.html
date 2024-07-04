@@ -1,0 +1,108 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>http和https - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="network"><meta property="og:title" content="http和https"><meta name=twitter:title content="http和https"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2023/01/25/http%E5%92%8Chttps/"><meta property="og:description" content="HTTP协议是什么？ HTTP协议是超文本传输协议的缩写，英文是Hyper Text Transfer Protocol。它是从WEB服务器传输超文本标记语言(HTML)到本地浏览器的传送协议。 设计HTTP最初的目的是为了提供一"><meta name=twitter:description content="HTTP协议是什么？ HTTP协议是超文本传输协议的缩写，英文是Hyper Text Transfer Protocol。它是从WEB服务器传输超文本标记语言(HTML)到本地浏览器的传送协议。 设计HTTP最初的目的是为了提供一"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2023-01-25T00:00:00+08:00"><meta property="article:modified_time" content="2023-01-25T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2023/01/25/http%E5%92%8Chttps/>http和https</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2023-01-25</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2029 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/network>network</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=http协议是什么>HTTP协议是什么？</h2><ul><li>HTTP协议是<strong>超文本传输协议</strong>的缩写，英文是Hyper Text Transfer Protocol。它是从WEB服务器传输超文本标记语言(HTML)到本地浏览器的传送协议。</li><li>设计HTTP最初的目的是为了提供一种发布和接收HTML页面的方法。</li><li>HTPP有多个版本，目前广泛使用的是HTTP/1.1版本。</li></ul><h2 id=http原理>HTTP原理</h2><p>HTTP是一个基于TCP/IP通信协议来传递数据的协议，传输的数据类型为HTML 文件,、图片文件, 查询结果等。</p><p>HTTP协议一般用于B/S架构（）。浏览器作为HTTP客户端通过URL向HTTP服务端即WEB服务器发送所有请求。</p><p>我们以访问百度为例：</p><p><img class=img-zoomable src=/images/6f6c5ed8-1262-4b44-83a0-c18902821752.png alt>
+访问百度流程</p><h2 id=http1和http2>http1.*和http2</h2><p><img class=img-zoomable src=/images/b609c812-112f-4e02-8dc1-db7301b03b56.png alt></p><p>这个Akamai公司建立的一个官方的演示，使用HTTP/1.1和HTTP/2同时请求379张图片，观察请求的时间，明显看出HTTP/2性能占优势。</p><p><img class=img-zoomable src=/images/cb0773c4-64c5-4f4a-9bdf-d9af8265f048.png alt></p><p>多路复用：通过单一的HTTP/2连接请求发起多重的请求-响应消息，多个请求stream共享一个TCP连接，实现多流并行而不是依赖建立多个TCP连接。</p><p>HTTP报文格式</p><p><img class=img-zoomable src=/images/abe7991d-7084-403b-91b6-85d9875e93ba.png alt></p><h2 id=http特点>HTTP特点</h2><ol><li>http协议支持客户端/服务端模式，也是一种请求/响应模式的协议。</li><li>简单快速：客户向服务器请求服务时，只需传送请求方法和路径。请求方法常用的有GET、HEAD、POST。</li><li>灵活：HTTP允许传输任意类型的数据对象。传输的类型由Content-Type加以标记。</li><li>无连接：限制每次连接只处理一个请求。服务器处理完请求，并收到客户的应答后，即断开连接，但是却不利于客户端与服务器保持会话连接，为了弥补这种不足，产生了两项记录http状态的技术，一个叫做Cookie,一个叫做Session。</li><li>无状态：无状态是指协议对于事务处理没有记忆，后续处理需要前面的信息，则必须重传。</li></ol><h2 id=为什么要用https>为什么要用https？</h2><p>实际使用中，绝大说的网站现在都采用的是https协议，这也是未来互联网发展的趋势。下面是通过wireshark抓取的一个博客网站的登录请求过程。</p><p><img class=img-zoomable src=/images/0165bba8-ae95-4577-9d6f-ce1ac4aa1224.png alt>
+博客登录抓包</p><p>可以看到访问的账号密码都是明文传输， 这样客户端发出的请求很容易被不法分子截取利用，因此，HTTP协议不适合传输一些敏感信息，比如：各种账号、密码等信息，使用http协议传输隐私信息非常不安全。</p><p><strong>一般http中存在如下问题：</strong></p><ul><li>请求信息明文传输，容易被窃听截取。</li><li>数据的完整性未校验，容易被篡改</li><li>没有验证对方身份，存在冒充危险</li></ul><h2 id=什么是https>什么是HTTPS?</h2><p>为了解决上述HTTP存在的问题，就用到了HTTPS。</p><p>HTTPS 协议（HyperText Transfer Protocol over Secure Socket Layer）：一般理解为HTTP+SSL/TLS，通过 SSL证书来验证服务器的身份，并为浏览器和服务器之间的通信进行加密。</p><p><strong>那么SSL又是什么？</strong></p><p>SSL（Secure Socket Layer，安全套接字层）：1994年为 Netscape 所研发，SSL 协议位于 TCP/IP 协议与各种应用层协议之间，为数据通讯提供安全支持。</p><p>TLS（Transport Layer Security，传输层安全）：其前身是 SSL，它最初的几个版本（SSL 1.0、SSL 2.0、SSL 3.0）由网景公司开发，1999年从 3.1 开始被 IETF 标准化并改名，发展至今已经有 TLS 1.0、TLS 1.1、TLS 1.2 三个版本。SSL3.0和TLS1.0由于存在安全漏洞，已经很少被使用到。TLS 1.3 改动会比较大，目前还在草案阶段，目前使用最广泛的是TLS 1.1、TLS 1.2。</p><p><strong>SSL发展史（互联网加密通信）</strong></p><ol><li>1994年NetSpace公司设计SSL协议（Secure Sockets Layout）1.0版本，但未发布。</li><li>1995年NetSpace发布SSL/2.0版本，很快发现有严重漏洞</li><li>1996年发布SSL/3.0版本，得到大规模应用</li><li>1999年，发布了SSL升级版TLS/1.0版本，目前应用最广泛的版本</li><li>2006年和2008年，发布了TLS/1.1版本和TLS/1.2版本</li></ol><h2 id=浏览器在使用https传输数据的流程是什么>浏览器在使用HTTPS传输数据的流程是什么？</h2><p><img class=img-zoomable src=/images/18415c33-f5e7-4033-8343-1e927b670f7b.png alt>
+HTTPS数据传输流程</p><ol><li>首先客户端通过URL访问服务器建立SSL连接。</li><li>服务端收到客户端请求后，会将网站支持的证书信息（证书中包含公钥）传送一份给客户端。</li><li>客户端的服务器开始协商SSL连接的安全等级，也就是信息加密的等级。</li><li>客户端的浏览器根据双方同意的安全等级，建立会话密钥，然后利用网站的公钥将会话密钥加密，并传送给网站。</li><li>服务器利用自己的私钥解密出会话密钥。</li><li>服务器利用会话密钥加密与客户端之间的通信。</li></ol><h2 id=https的缺点>HTTPS的缺点</h2><ul><li>HTTPS协议多次握手，导致页面的加载时间延长近50%；</li><li>HTTPS连接缓存不如HTTP高效，会增加数据开销和功耗；</li><li>申请SSL证书需要钱，功能越强大的证书费用越高。</li><li>SSL涉及到的安全算***消耗 CPU 资源，对服务器资源消耗较大。</li></ul><h2 id=总结https和http的区别>总结HTTPS和HTTP的区别</h2><ul><li>HTTPS是HTTP协议的安全版本，HTTP协议的数据传输是明文的，是不安全的，HTTPS使用了SSL/TLS协议进行了加密处理。</li><li>http和https使用连接方式不同，默认端口也不一样，http是80，https是443。</li></ul><p>参考文章:</p><ul><li><a href=https://zhuanlan.zhihu.com/p/72616216 target=_blank>https://zhuanlan.zhihu.com/p/72616216</a></li><li><a href="https://baijiahao.baidu.com/s?id=1673721127616042356" target=_blank>https://baijiahao.baidu.com/s?id=1673721127616042356</a></li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#http协议是什么>HTTP协议是什么？</a></li><li><a href=#http原理>HTTP原理</a></li><li><a href=#http1和http2>http1.*和http2</a></li><li><a href=#http特点>HTTP特点</a></li><li><a href=#为什么要用https>为什么要用https？</a></li><li><a href=#什么是https>什么是HTTPS?</a></li><li><a href=#浏览器在使用https传输数据的流程是什么>浏览器在使用HTTPS传输数据的流程是什么？</a></li><li><a href=#https的缺点>HTTPS的缺点</a></li><li><a href=#总结https和http的区别>总结HTTPS和HTTP的区别</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#http协议是什么>HTTP协议是什么？</a></li><li><a href=#http原理>HTTP原理</a></li><li><a href=#http1和http2>http1.*和http2</a></li><li><a href=#http特点>HTTP特点</a></li><li><a href=#为什么要用https>为什么要用https？</a></li><li><a href=#什么是https>什么是HTTPS?</a></li><li><a href=#浏览器在使用https传输数据的流程是什么>浏览器在使用HTTPS传输数据的流程是什么？</a></li><li><a href=#https的缺点>HTTPS的缺点</a></li><li><a href=#总结https和http的区别>总结HTTPS和HTTP的区别</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

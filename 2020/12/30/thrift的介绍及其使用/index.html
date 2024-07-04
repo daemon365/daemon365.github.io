@@ -1,0 +1,296 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>thrift的介绍及其使用 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="thrift,go"><meta property="og:title" content="thrift的介绍及其使用"><meta name=twitter:title content="thrift的介绍及其使用"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2020/12/30/thrift%E7%9A%84%E4%BB%8B%E7%BB%8D%E5%8F%8A%E5%85%B6%E4%BD%BF%E7%94%A8/"><meta property="og:description" content="什么是thrift Thrift是Facebook于2007年开发的跨语言的rpc服框架，提供多语言的编译功能，并提供多种服务器工作模式；用户通过Thrift的IDL（接口定义语言）来描述接口函数及数据"><meta name=twitter:description content="什么是thrift Thrift是Facebook于2007年开发的跨语言的rpc服框架，提供多语言的编译功能，并提供多种服务器工作模式；用户通过Thrift的IDL（接口定义语言）来描述接口函数及数据"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2020-12-30T00:00:00+08:00"><meta property="article:modified_time" content="2020-12-30T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2020/12/30/thrift%E7%9A%84%E4%BB%8B%E7%BB%8D%E5%8F%8A%E5%85%B6%E4%BD%BF%E7%94%A8/>thrift的介绍及其使用</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2020-12-30</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;5126 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/thrift>thrift</a>&nbsp;<a href=/tags/go>go</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=什么是thrift>什么是thrift</h2><p>Thrift是Facebook于2007年开发的跨语言的rpc服框架，提供多语言的编译功能，并提供多种服务器工作模式；用户通过Thrift的IDL（接口定义语言）来描述接口函数及数据类型，然后通过Thrift的编译环境生成各种语言类型的接口文件，用户可以根据自己的需要采用不同的语言开发客户端代码和服务器端代码。</p><p>例如，我想开发一个快速计算的RPC服务，它主要通过接口函数getInt对外提供服务，这个RPC服务的getInt函数使用用户传入的参数，经过复杂的计算，计算出一个整形值返回给用户；服务器端使用java语言开发，而调用客户端可以是java、c、python等语言开发的程序，在这种应用场景下，我们只需要使用Thrift的IDL描述一下getInt函数（以.thrift为后缀的文件），然后使用Thrift的多语言编译功能，将这个IDL文件编译成C、java、python几种语言对应的“特定语言接口文件”（每种语言只需要一条简单的命令即可编译完成），这样拿到对应语言的“特定语言接口文件”之后，就可以开发客户端和服务器端的代码了，开发过程中只要接口不变，客户端和服务器端的开发可以独立的进行。</p><p>Thrift为服务器端程序提供了很多的工作模式，例如：线程池模型、非阻塞模型等等，可以根据自己的实际应用场景选择一种工作模式高效地对外提供服务；</p><p><strong>Thrift的官方网站：http://thrift.apache.org/</strong></p><h2 id=thrift的协议结构>thrift的协议结构</h2><p><img class=img-zoomable src=/images/db700a52-4aa0-49f2-aa47-2fd759a99b44.png alt></p><p><img class=img-zoomable src=/images/767a4b7a-7cfd-44a0-a616-263a3b3bc501.png alt></p><p>Thrift是一种c/s的架构体系。TServer主要任务是高效的接受客户端请求，并将请求转发给Processor处理。</p><ul><li>最上层是用户自行实现的业务逻辑代码；</li><li>Processor是由thrift编译器自动生成的代码，它封装了从输入数据流中读数据和向数据流中写数据的操作，它的主要工作是：从连接中读取数据，把处理交给用户实现impl，最后把结果写到连接上。</li><li>TProtocol是用于数据类型解析的，将结构化数据转化为字节流给TTransport进行传输。从TProtocol以下部分是thirft的传输协议和底层I/O通信。</li><li>TTransport是与底层数据传输密切相关的传输层，负责以字节流方式接收和发送消息体，不关注是什么数据类型。</li><li>底层IO负责实际的数据传输，包括socket、文件和压缩数据流等。</li></ul><h2 id=下载>下载</h2><p>下载thrift编译软件:</p><ul><li>MacOs:<code>brew install thrift</code></li><li>Windows:Thrift官方下载地址：http://thrift.apache.org/download</li></ul><p>golang下载: <code>go get github.com/apache/thrift/lib/go/thrift</code></p><p>python下载: <code>sudo pip install thrift</code></p><h2 id=idl文件编写>IDL文件编写</h2><p>thrift 采用IDL（Interface Definition Language）来定义通用的服务接口，并通过生成不同的语言代理实现来达到跨语言、平台的功能。在thrift的IDL中可以定义以下一些类型：基本数据类型，结构体，容器，异常、服务</p><h3 id=基本类型>基本类型</h3><ul><li>bool: 布尔值 (true or false), one byte</li><li>byte: 有符号字节</li><li>i16: 16位有符号整型</li><li>i32: 32位有符号整型</li><li>i64: 64位有符号整型</li><li>double: 64位浮点型</li><li>string: Encoding agnostic text or binary string</li></ul><p>基本类型中基本都是有符号数，因为有些语言没有无符号数，所以Thrift不支持无符号整型。</p><h3 id=特殊类型>特殊类型</h3><p>binary: Blob (byte array) a sequence of unencoded bytes</p><p>这是string类型的一种变形，主要是为<a href=http://lib.csdn.net/base/javase target=_blank>Java</a>使用，目前我主要使用C++的语言，所以java的这个类型没有用过</p><h3 id=struct>struct</h3><p>thrift中struct是定义为一种对象，和面向对象语言的class差不多.,但是struct有以下一些约束：</p><ul><li>struct不能继承，但是可以嵌套，不能嵌套自己。</li><li>其成员都是有明确类型</li><li>成员是被正整数编号过的，其中的编号使不能重复的，这个是为了在传输过程中编码使用。</li><li>成员分割符可以是逗号（,）或是分号（;），而且可以混用，但是为了清晰期间，建议在定义中只使用一种，比如C++学习者可以就使用分号（;）。</li><li>字段会有optional和required之分和protobuf一样，但是如果不指定则为无类型—可以不填充该值，但是在序列化传输的时候也会序列化进去，optional是不填充则部序列化，required是必须填充也必须序列化。</li><li>每个字段可以设置默认值</li><li>同一文件可以定义多个struct，也可以定义在不同的文件，进行include引入。</li></ul><p>数字标签作用非常大，但是随着项目开发的不断发展，也许字段会有变化，但是建议不要轻易修改这些数字标签，修改之后如果没有同步客户端和服务器端会让一方解析出问题。</p><pre><code class=language-go>struct Report {  
+	1: required string msg, //改字段必须填写  
+	2: optional i32 type = 0; //默认值  
+	3: i32 time //默认字段类型为optional 
+}
+</code></pre><p>规范的struct定义中的每个域均会使用required或者 optional关键字进行标识。如果required标识的域没有赋值，Thrift将给予提示；如果optional标识的域没有赋值，该域将不会被序列化传输；如果某个optional标识域有缺省值而用户没有重新赋值，则该域的值一直为缺省值；如果某个optional标识域有缺省值或者用户已经重新赋值，而不设置它的__isset为true，也不会被序列化传输。</p><h3 id=容器containers>容器（Containers）</h3><p>　　Thrift容器与目前流行编程语言的容器类型相对应，有3种可用容器类型：</p><ul><li>list<t>: 元素类型为t的有序表，容许元素重复。对应c++的vector，java的ArrayList或者其他语言的数组（官方文档说是ordered list不知道如何理解？排序的？c++的vector不排序）</li><li>set<t>:元素类型为t的无序表，不容许元素重复。对应c++中的set，java中的HashSet,python中的set，php中没有set，则转换为list类型了</li><li>map&lt;t,t>: 键类型为t，值类型为t的kv对，键不容许重复。对用c++中的map, Java的HashMap, PHP 对应 array, Python/Ruby 的dictionary。</li></ul><p>　　容器中元素类型可以是除了service外的任何合法Thrift类型（包括结构体和异常）。为了最大的兼容性，map的key最好是thrift的基本类型，有些语言不支持复杂类型的key，JSON协议只支持那些基本类型的key。</p><p>容器都是同构容器，不失异构容器。</p><p>例子</p><pre><code class=language-go>struct Test {
+  1: map&lt;Numberz, UserId&gt; user_map,
+  2: set&lt;Numberz&gt; num_sets, 
+  3: list&lt;Stusers&gt; users
+}
+</code></pre><h3 id=枚举enmu>枚举（enmu）</h3><p>很多语言都有枚举，意义都一样。比如，当定义一个消息类型时，它只能是预定义的值列表中的一个，可以用枚举实现。说明：</p><ul><li>编译器默认从0开始赋值</li><li>可以赋予某个常量某个整数</li><li>允许常量是十六进制整数</li><li>末尾没有分号</li><li>给常量赋缺省值时，使用常量的全称</li></ul><p>　　注意，不同于protocal buffer，thrift不支持枚举类嵌套，枚举常量必须是32位的正整数</p><pre><code class=language-go>enum EnOpType {CMD_OK = 0, // (0)  
+               CMD_NOT_EXIT = 2000, // (2000) 
+               CMD_EXIT = 2001, // (2001) 　　
+               CMD_ADD = 2002 // (2002)
+              }
+struct StUser {
+  1: required i32 userId;
+  2: required string userName;
+  3: optional EnOpType cmd_code = EnOpType.CMD_OK; // (0)
+  4: optional string language = “english”
+}
+</code></pre><h3 id=常量定义和类型定义>常量定义和类型定义</h3><p>　　Thrift允许定义跨语言使用的常量，复杂的类型和结构体可使用JSON形式表示。</p><pre><code class=language-go>const i32 INT_CONST = 1234; const EnOpType myEnOpType = EnOpType.CMD_EXIT; //2001
+</code></pre><p>　说明：分号可有可无。支持16进制。　　</p><p>Thrift支持C/C++类型定义。</p><pre><code class=language-go>typedef i32 MyInteger // a 
+typedef StUser ReU // b 
+typedef i64 UserId
+</code></pre><p>　说明：a.末尾没有逗号。b. Struct也可以使用typedef。</p><h3 id=异常exceptions>异常（Exceptions）</h3><p>　　Thrift结构体在概念上类似于（similar to）C语言结构体类型—将相关属性封装在一起的简便方式。Thrift结构体将会被转换成面向对象语言的类。</p><p>　　异常在语法和功能上类似于结构体，差别是异常使用关键字exception，而且异常是继承每种语言的基础异常类。</p><pre><code class=language-go>exception Extest { 
+  1: i32 errorCode,
+  2: string message,
+  3: StUser userinfo
+}
+</code></pre><h3 id=服务services>服务（Services）</h3><p>　　服务的定义方法在语义(semantically)上等同于面向对象语言中的接口。Thrift编译器会产生执行这些接口的client和server stub。具体参见下一节。</p><p>　　在流行的序列化/反序列化框架（如protocal buffer）中，Thrift是少有的提供多语言间RPC服务的框架。这是Thrift的一大特色。</p><p>　　Thrift编译器会根据选择的目标语言为server产生服务接口代码，为client产生stubs。</p><pre><code class=language-go>service SeTest {   void ping(),   bool postTweet(1: StUser user);   
+    StUser searchTweets(1:string name);  
+    oneway void zip()
+}　
+</code></pre><ul><li>首先所有的方法都是纯虚汗数，也就是继承类必须实现这些方法</li><li>返回值不是基本类型的都把返回值放到了函数参数中第一个参数，命名_return</li><li>所有的参数（除返回值）都是const类型，意味这函数一般参数无法作为返回值携带者。只会有一个返回参数，如果返回值有多个，那只能封装复杂类型作为返回值参数。</li><li>oneway的返回值一定是void</li><li>当然服务是支持继承。</li><li>服务不支持重载</li></ul><h3 id=名字空间namespace>名字空间（Namespace）</h3><p>Thrift中的命名空间类似于C++中的namespace和java中的package，它们提供了一种组织（隔离）代码的简便方式。名字空间也可以用于解决类型定义中的名字冲突。</p><p>由于每种语言均有自己的命名空间定义方式（如<a href=http://lib.csdn.net/base/python target=_blank>Python</a>中有module）, thrift允许开发者针对特定语言定义namespace：</p><pre><code>namespace go com.example.test
+namespace py com.example.test  
+namespace php com.example.test  
+</code></pre><h3 id=注释comment>注释（Comment）</h3><p>　　Thrift支持C多行风格和Java/C++单行风格。</p><pre><code class=language-go>/* 
+* This is a multi-line comment. 
+* Just like in C. 
+*/ 
+// C++/Java style single-line comments work just as well.
+</code></pre><h3 id=11includes>11Includes</h3><p>　　便于管理、重用和提高模块性/组织性，我们常常分割Thrift定义在不同的文件中。包含文件搜索方式与c++一样。Thrift允许文件包含其它thrift文件，用户需要使用thrift文件名作为前缀访问被包含的对象，如：</p><pre><code class=language-go>include &quot;test.thrift&quot;    
+... 
+struct StSearchResult {    
+  1: in32 uid;
+  ... 
+}
+</code></pre><p>thrift文件名要用双引号包含，末尾没有逗号或者分号</p><h2 id=thrift支持的传输及服务模型>Thrift支持的传输及服务模型</h2><h3 id=支持的传输格式>支持的传输格式：</h3><table><thead><tr><th style=text-align:left>参数:</th><th>描述:</th></tr></thead><tbody><tr><td style=text-align:left>TBinaryProtocol</td><td>二进制格式</td></tr><tr><td style=text-align:left>TCompactProtocol</td><td>压缩格式</td></tr><tr><td style=text-align:left>TJSONProtocol</td><td>JSON格式</td></tr><tr><td style=text-align:left>TSimpleJSONProtocol</td><td>提供JSON只写协议, 生成的文件很容易通过脚本语言解析</td></tr><tr><td style=text-align:left>TDebugProtocol</td><td>使用易懂的可读的文本格式，以便于debug</td></tr></tbody></table><h3 id=支持的数据传输方式>支持的数据传输方式：</h3><table><thead><tr><th>参数:</th><th>描述:</th></tr></thead><tbody><tr><td>TSocket</td><td>阻塞式socker</td></tr><tr><td>TFramedTransport</td><td>以frame为单位进行传输，非阻塞式服务中使用</td></tr><tr><td>TFileTransport</td><td>以文件形式进行传输</td></tr><tr><td>TMemoryTransport</td><td>将内存用于I/O. java实现时内部实际使用了简单的ByteArrayOutputStream</td></tr><tr><td>TZlibTransport</td><td>使用zlib进行压缩， 与其他传输方式联合使用。当前无java实现</td></tr></tbody></table><h3 id=支持的服务模型>支持的服务模型：</h3><table><thead><tr><th>参数:</th><th>描述:</th></tr></thead><tbody><tr><td>TSimpleServer</td><td>简单的单线程服务模型，常用于测试</td></tr><tr><td>TThreadPoolServer</td><td>多线程服务模型，使用标准的阻塞式IO</td></tr><tr><td>TNonblockingServer</td><td>多线程服务模型，使用非阻塞式IO（需使用TFramedTransport数据传输方式）</td></tr></tbody></table><h2 id=代码实现>代码实现</h2><h3 id=编写thrift文件>编写*.thrift文件</h3><pre><code class=language-go>namespace go example
+
+struct Data {
+    1: string text
+}
+
+service format_data {
+    Data do_format(1:Data data),
+}
+</code></pre><p>解析成go代码:<code>thrift --out . --gen go example.thrift</code></p><p>解析成python代码:<code>thrift --out . --gen py example.thrift</code></p><h3 id=golang服务端>golang服务端</h3><p>服务端的实现:</p><ol><li>Handler<ul><li>服务端业务处理逻辑。这里就是业务代码，比如 计算两个字符串 相似度</li></ul></li><li>Processor<ul><li>从Thrift框架 转移到 业务处理逻辑。因此是RPC调用，客户端要把 参数发送给服务端，而这一切由Thrift封装起来了，由Processor将收到的“数据”转交给业务逻辑去处理</li></ul></li><li>Protocol<ul><li>数据的序列化与反序列化。客户端提供的是“字符串”，而数据传输是一个个的字节，因此会用到序列化与反序列化。</li></ul></li><li>Transport<ul><li>传输层的数据传输。</li></ul></li><li>TServer<ul><li>服务端的类型。服务器以何种方式来处理客户端请求</li><li>TSimpleServer —— 单线程服务器端使用标准的阻塞式 I/O</li><li>TThreadPoolServer —— 多线程服务器端使用标准的阻塞式 I/O</li><li>TNonblockingServer —— 多线程服务器端使用非阻塞式 I/O</li></ul></li></ol><pre><code class=language-go>/* server.go */
+
+package main
+
+import (
+	&quot;context&quot;
+	&quot;fmt&quot;
+	&quot;log&quot;
+	&quot;test/example&quot;
+
+	&quot;github.com/apache/thrift/lib/go/thrift&quot;
+)
+
+type FormatDataImpl struct{}
+
+func (fdi *FormatDataImpl) DoFormat(ctx context.Context) (r string, err error) {
+	return &quot;不好&quot;, nil
+}
+
+const (
+	HOST = &quot;127.0.0.1&quot;
+	PORT = &quot;8080&quot;
+)
+
+func main() {
+
+	handler := &amp;FormatDataImpl{}
+	processor := example.NewFormatDataProcessor(handler)
+	serverTransport, err := thrift.NewTServerSocket(HOST + &quot;:&quot; + PORT)
+	if err != nil {
+		log.Fatalln(&quot;Error:&quot;, err)
+	}
+	transportFactory := thrift.NewTBufferedTransportFactory(10000000)
+	protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
+
+	server := thrift.NewTSimpleServer4(processor, serverTransport, transportFactory, protocolFactory)
+	fmt.Println(&quot;Running at:&quot;, HOST+&quot;:&quot;+PORT)
+	err = server.Serve()
+	if err != nil {
+		log.Fatalln(&quot;Error:&quot;, err)
+	}
+}
+</code></pre><h3 id=python服务端>python服务端</h3><pre><code class=language-python>from thrift.protocol import TBinaryProtocol
+from thrift.server import TServer
+from thrift.transport import TSocket, TTransport
+from example import format_data
+
+__HOST = '127.0.0.1'
+__PORT = 8080
+
+class FormatDataImpl:
+    def do_format(self):
+        return &quot;你好&quot;
+
+if __name__ == '__main__':
+    handler = FormatDataImpl()
+    processor = format_data.Processor(handler)
+    transport = TSocket.TServerSocket('127.0.0.1', 8080)
+    tfactory = TTransport.TBufferedTransportFactory()
+    pfactory = TBinaryProtocol.TBinaryProtocolFactory()
+
+    server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
+
+    print(&quot;Starting python server...&quot;)
+    server.serve()
+    print(&quot;done!&quot;)
+</code></pre><h3 id=golang客户端>golang客户端</h3><pre><code class=language-go>package main
+
+import (
+	&quot;context&quot;
+	&quot;fmt&quot;
+	&quot;log&quot;
+	&quot;net&quot;
+	&quot;test/example&quot;
+
+	&quot;github.com/apache/thrift/lib/go/thrift&quot;
+)
+
+const (
+	HOST = &quot;127.0.0.1&quot;
+	PORT = &quot;8080&quot;
+)
+
+func main() {
+	tSocket, err := thrift.NewTSocket(net.JoinHostPort(HOST, PORT))
+	if err != nil {
+		log.Fatalln(&quot;tSocket error:&quot;, err)
+	}
+	transport := thrift.NewTBufferedTransport(tSocket,10000000)
+	// transport, err := transportFactory.Gwt(tSocket)
+	// if err != nil {
+	// 	log.Fatalln(&quot;GetTransport error:&quot;, err)
+	// }
+	protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
+
+	client := example.NewFormatDataClientFactory(transport, protocolFactory)
+
+	if err := transport.Open(); err != nil {
+		log.Fatalln(&quot;Error opening:&quot;, HOST+&quot;:&quot;+PORT)
+	}
+	defer transport.Close()
+
+	// data := example.Data{Text: &quot;hello,world!as赵海宇&quot;}
+	d, err := client.DoFormat(context.TODO() )
+	fmt.Println(d)
+}
+
+</code></pre><p>5.python客户端</p><pre><code class=language-python>from example import format_data
+from thrift import Thrift
+from thrift.transport import TSocket
+from thrift.transport import TTransport
+from thrift.protocol import TBinaryProtocol
+
+try:
+    # Make socket
+    transport = TSocket.TSocket('127.0.0.1', 8080)
+    # Buffering is critical. Raw sockets are very slow
+    transport = TTransport.TBufferedTransport(transport)
+
+    # Wrap in a protocol
+    protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+    # Create a client to use the protocol encoder
+    client = format_data.Client(protocol)
+
+    # Connect!
+    transport.open()
+
+    # data = format_data.Data(text=&quot;sada&quot;)
+    d = client.do_format()
+    print(d)
+    transport.close()
+except Thrift.TException as tx:
+    print(tx.message)
+</code></pre><h2 id=常见的坑>常见的坑</h2><ol><li>golang中倒入包路径有<code>github.com/apache/thrift/lib/go/thrift</code>和<code>git.apache.org/thrift.git/lib/go/thrift</code> 要统一用一个,不然会出问题</li><li>golang中 thrift的新版实现的结构体多一个<code>ctx context.Context</code>参数.(老版本没有,网上很多的demo代码用新版的thrift会报错)</li><li>客户端以及服务端对应好传输及服务模型协议,不同会报错.</li></ol><p>参考文章:</p><ul><li><a href=https://www.cnblogs.com/hapjin/p/8075721.html target=_blank>https://www.cnblogs.com/hapjin/p/8075721.html</a></li><li><a href=https://blog.csdn.net/houjixin/article/details/42778335 target=_blank>https://blog.csdn.net/houjixin/article/details/42778335</a></li><li><a href=https://www.jianshu.com/p/4723ce380b0e target=_blank>https://www.jianshu.com/p/4723ce380b0e</a></li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#什么是thrift>什么是thrift</a></li><li><a href=#thrift的协议结构>thrift的协议结构</a></li><li><a href=#下载>下载</a></li><li><a href=#idl文件编写>IDL文件编写</a><ul><li><a href=#基本类型>基本类型</a></li><li><a href=#特殊类型>特殊类型</a></li><li><a href=#struct>struct</a></li><li><a href=#容器containers>容器（Containers）</a></li><li><a href=#枚举enmu>枚举（enmu）</a></li><li><a href=#常量定义和类型定义>常量定义和类型定义</a></li><li><a href=#异常exceptions>异常（Exceptions）</a></li><li><a href=#服务services>服务（Services）</a></li><li><a href=#名字空间namespace>名字空间（Namespace）</a></li><li><a href=#注释comment>注释（Comment）</a></li><li><a href=#11includes>11Includes</a></li></ul></li><li><a href=#thrift支持的传输及服务模型>Thrift支持的传输及服务模型</a><ul><li><a href=#支持的传输格式>支持的传输格式：</a></li><li><a href=#支持的数据传输方式>支持的数据传输方式：</a></li><li><a href=#支持的服务模型>支持的服务模型：</a></li></ul></li><li><a href=#代码实现>代码实现</a><ul><li><a href=#编写thrift文件>编写*.thrift文件</a></li><li><a href=#golang服务端>golang服务端</a></li><li><a href=#python服务端>python服务端</a></li><li><a href=#golang客户端>golang客户端</a></li></ul></li><li><a href=#常见的坑>常见的坑</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#什么是thrift>什么是thrift</a></li><li><a href=#thrift的协议结构>thrift的协议结构</a></li><li><a href=#下载>下载</a></li><li><a href=#idl文件编写>IDL文件编写</a><ul><li><a href=#基本类型>基本类型</a></li><li><a href=#特殊类型>特殊类型</a></li><li><a href=#struct>struct</a></li><li><a href=#容器containers>容器（Containers）</a></li><li><a href=#枚举enmu>枚举（enmu）</a></li><li><a href=#常量定义和类型定义>常量定义和类型定义</a></li><li><a href=#异常exceptions>异常（Exceptions）</a></li><li><a href=#服务services>服务（Services）</a></li><li><a href=#名字空间namespace>名字空间（Namespace）</a></li><li><a href=#注释comment>注释（Comment）</a></li><li><a href=#11includes>11Includes</a></li></ul></li><li><a href=#thrift支持的传输及服务模型>Thrift支持的传输及服务模型</a><ul><li><a href=#支持的传输格式>支持的传输格式：</a></li><li><a href=#支持的数据传输方式>支持的数据传输方式：</a></li><li><a href=#支持的服务模型>支持的服务模型：</a></li></ul></li><li><a href=#代码实现>代码实现</a><ul><li><a href=#编写thrift文件>编写*.thrift文件</a></li><li><a href=#golang服务端>golang服务端</a></li><li><a href=#python服务端>python服务端</a></li><li><a href=#golang客户端>golang客户端</a></li></ul></li><li><a href=#常见的坑>常见的坑</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

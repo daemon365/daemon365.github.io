@@ -1,0 +1,123 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>Go - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><link rel=alternate type=application/rss+xml href=https://daemon365.dev/tags/go/index.xml title=Daemon><meta property="og:title" content="Go"><meta name=twitter:title content="Go"><meta property="og:type" content="website"><meta property="og:url" content="https://daemon365.dev/tags/go/"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="og:updated_time" content="2023-09-25T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><div class=page-info><span>Posts with the tag Go:</span></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/09/04/%E4%BB%8Ekratos%E5%88%86%E6%9E%90breaker%E7%86%94%E6%96%AD%E5%99%A8%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0/>从kratos分析breaker熔断器源码实现</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-09-04</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1005 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/kratos>kratos</a>&nbsp;<a href=/tags/breaker>breaker</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">为什么要用熔断 前面我们讲过限流保证服务的可用性，不被突如其来的流量打爆。但是两种情况是限流解决不了的。 如果我们服务只能处理1000QPS，但是有10wQPS打过来，服务还是会炸。因为拒绝请求也需要成本</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/09/04/%E4%BB%8Ekratos%E5%88%86%E6%9E%90bbr%E9%99%90%E6%B5%81%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0/>从kratos分析BBR限流源码实现</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-09-04</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1775 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/kratos>kratos</a>&nbsp;<a href=/tags/bbr>BBR</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">什么是自适应限流 自适应限流从整体维度对应用入口流量进行控制，结合应用的 Load、CPU 使用率、总体平均 RT、入口 QPS 和并发线程数等几个维度的监控指标，通过自适应的流控策略，让系统的入口流量和系统的负载达</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/09/02/kratos%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-1-%E6%A6%82%E8%A7%88/>Kratos漫游指南 1 - 概览</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-09-02</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;4719 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/kratos>kratos</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">您好，地球人，欢迎来到Kratos漫游指南。 对于刚开始研究Kratos框架的开发者来说，目前的文档有些零散，这与我们的模块化设计有一些关系，不过Don&rsquo;t panic，从这篇文章开始，我将试</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/08/23/%E5%9F%BA%E4%BA%8E-opentelemetry-%E7%9A%84%E9%93%BE%E8%B7%AF%E8%BF%BD%E8%B8%AA/>基于 OpenTelemetry 的链路追踪</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-08-23</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2443 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/kratos>kratos</a>&nbsp;<a href=/tags/opentelemetry>opentelemetry</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">链路追踪的前世今生 分布式跟踪（也称为分布式请求跟踪）是一种用于分析和监控应用程序的方法，尤其是使用微服务架构构建的应用程序。分布式跟踪有助于精确定位故障发生的位置以及导致性能差的原因。 起源 链路追踪(D</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/08/20/%E9%80%9A%E8%BF%87-layout-%E6%8E%A2%E7%B4%A2-kratos-%E8%BF%90%E8%A1%8C%E5%8E%9F%E7%90%86/>通过 layout 探索 kratos 运行原理</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-08-20</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1158 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/kratos>kratos</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">创建项目 首先需要安装好对应的依赖环境，以及工具： go 下载 protoc go install google.golang.org/protobuf/cmd/protoc-gen-go@latest protoc-gen-go go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest # 创建项目模板 kratos new helloworld cd helloworld # 拉取项目依赖 go mod download # 生成proto模板 kratos proto add api/helloworld/helloworld.proto # 生成proto源码 kratos proto client api/helloworld/helloworld.proto # 生成server模板 kratos proto server api/helloworld/helloworld.proto</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/08/19/kratos-%E6%97%A5%E5%BF%97%E5%BA%93%E7%9A%84%E4%BD%BF%E7%94%A8%E5%A7%BF%E5%8A%BF/>kratos 日志库的使用姿势</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-08-19</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2512 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/kratos>kratos</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">什么是日志 所谓日志（Log）是指系统所指定对象的某些操作和其操作结果按时间有序的集合。log文件就是日志文件，log文件记录了系统和系统的用户之间交互的信息，是自动捕获人与系统终端之间交互的类型、内容</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/05/22/golang-map%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/>golang map实现原理</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-05-22</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;16838 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">这篇文章主要讲 map 的赋值、删除、查询、扩容的具体执行过程，仍然是从底层的角度展开。结合源码，看完本文一定会彻底明白 map 底层原理。 我要说明的是，这里对 map 的基本用法涉及比较少，我相信可以通过阅读其他入门书籍了</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/03/23/zap%E9%AB%98%E6%80%A7%E8%83%BD%E6%97%A5%E5%BF%97/>zap高性能日志</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-03-23</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;3619 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/zap>zap</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">摘要 日志在整个工程实践中的重要性不言而喻，在选择日志组件的时候也有多方面的考量。详细、正确和及时的反馈是必不可少的，但是整个性能表现是否也是必要考虑的点呢？在长期的实践中发现有的日志组件对于计算资源的</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/02/21/golang-channel%E5%8E%9F%E7%90%86/>golang channel原理</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-02-21</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;3917 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">channel介绍 channel一个类型管道，通过它可以在goroutine之间发送和接收消息。它是Golang在语言层面提供的goroutine间的通信方式。 众所周知，Go依赖于称为CSP（Comm</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/02/20/golang-gc-%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6/>golang GC 垃圾回收机制</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-02-20</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;3887 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">垃圾回收(Garbage Collection，简称GC)是编程语言中提供的自动的内存管理机制，自动释放不需要的对象，让出存储器资源，无需程序员手动执行。 Golang中的垃圾回收主要应用三色标记法，GC</div></div><div class=pagination><div class=pag-first><a href=/tags/go/><i class="iconfont icon-caret-back-circle-sharp"></i></a></div><div class=pag-previous><a href=/tags/go/><i class="iconfont icon-chevron-back-circle-sharp"></i></a></div><div class=pag-item><a href=/tags/go/>1</a></div><div class="pag-item pag-current"><a href=/tags/go/page/2/>2</a></div><div class=pag-item><a href=/tags/go/page/3/>3</a></div><div class=pag-item><a href=/tags/go/page/4/>4</a></div><div class=pag-item><a href=/tags/go/page/5/>5</a></div><div class=pag-next><a href=/tags/go/page/3/><i class="iconfont icon-chevron-forward-circle-sharp"></i></a></div><div class=pag-last><a href=/tags/go/page/5/><i class="iconfont icon-caret-forward-circle-sharp"></i></a></div></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

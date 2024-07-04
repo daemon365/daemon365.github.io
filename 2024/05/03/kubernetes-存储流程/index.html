@@ -1,0 +1,555 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>kubernetes 存储流程 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="csi,kubernetes"><meta property="og:title" content="kubernetes 存储流程"><meta name=twitter:title content="kubernetes 存储流程"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2024/05/03/kubernetes-%E5%AD%98%E5%82%A8%E6%B5%81%E7%A8%8B/"><meta property="og:description" content="PV 与 PVC PVC (PersistentVolumeClaim)，命名空间（namespace）级别的资源，由 用户 or StatefulSet 控制器（根据VolumeClaimTemplate） 创建。PVC 类似于 Pod，Pod 消耗 Node 资"><meta name=twitter:description content="PV 与 PVC PVC (PersistentVolumeClaim)，命名空间（namespace）级别的资源，由 用户 or StatefulSet 控制器（根据VolumeClaimTemplate） 创建。PVC 类似于 Pod，Pod 消耗 Node 资"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2024-05-03T00:00:00+08:00"><meta property="article:modified_time" content="2024-05-03T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/03/kubernetes-%E5%AD%98%E5%82%A8%E6%B5%81%E7%A8%8B/>kubernetes 存储流程</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-03</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2884 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/csi>csi</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=pv-与-pvc>PV 与 PVC</h2><p>PVC (PersistentVolumeClaim)，命名空间（namespace）级别的资源，由 用户 or StatefulSet 控制器（根据VolumeClaimTemplate） 创建。PVC 类似于 Pod，Pod 消耗 Node 资源，PVC 消耗 PV 资源。Pod 可以请求特定级别的资源（CPU 和内存），而 PVC 可以请求特定存储卷的大小及访问模式（Access Mode
+PV（PersistentVolume）是集群中的一块存储资源，可以是 NFS、iSCSI、Ceph、GlusterFS 等存储卷，PV 由集群管理员创建，然后由开发者使用 PVC 来申请 PV，PVC 是对 PV 的申请，类似于 Pod 对 Node 的申请。</p><h3 id=静态创建存储卷>静态创建存储卷</h3><p><img class=img-zoomable src=/images/e1e2ee82-b5ea-4edb-a587-b1d5860f81d9.png alt></p><p>也就是我们手动创建一个pv和pvc，然后将pv和pvc绑定，然后pod使用pvc，这样就可以使用pv了。</p><p>创建一个 nfs 的 pv 以及 对应的 pvc</p><pre><code class=language-yaml>apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  nfs:
+    server: 192.168.203.110
+    path: /data/nfs
+</code></pre><pre><code class=language-yaml>apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+</code></pre><p>查看 pvc</p><pre><code class=language-BASH>$ kubectl get pvc
+NAME      STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+nfs-pvc   Bound    nfs-pv   10Gi       RWO                           101s
+</code></pre><p>创建一个 pod 使用 pvc</p><pre><code class=language-yaml>apiVersion: v1
+kind: Pod
+metadata:
+  name: test-nfs
+spec:
+  containers:
+  - image: ubuntu:22.04
+    name: ubuntu
+    command:
+    - /bin/sh
+    - -c
+    - sleep 10000
+    volumeMounts:
+    - mountPath: /data
+      name: nfs-volume
+  volumes:
+  - name: nfs-volume
+    persistentVolumeClaim:
+      claimName: nfs-pvc
+</code></pre><pre><code class=language-bash>❯ kubectl exec -it test-nfs -- cat /data/nfs
+192.168.203.110:/data/nfs
+</code></pre><h3 id=pvc-pv-绑定流程>pvc pv 绑定流程</h3><pre><code class=language-GO>func (ctrl *PersistentVolumeController) syncUnboundClaim(ctx context.Context, claim *v1.PersistentVolumeClaim) error {
+	logger := klog.FromContext(ctx)
+	if claim.Spec.VolumeName == &quot;&quot; {
+		// 是不是延迟绑定 也就是 VolumeBindingMode 为 WaitForFirstConsumer
+		delayBinding, err := storagehelpers.IsDelayBindingMode(claim, ctrl.classLister)
+		if err != nil {
+			return err
+		}
+    // 通过 pvc 找到最合适的 pv
+		volume, err := ctrl.volumes.findBestMatchForClaim(claim, delayBinding)
+		if err != nil {
+			logger.V(2).Info(&quot;Synchronizing unbound PersistentVolumeClaim, Error finding PV for claim&quot;, &quot;PVC&quot;, klog.KObj(claim), &quot;err&quot;, err)
+			return fmt.Errorf(&quot;error finding PV for claim %q: %w&quot;, claimToClaimKey(claim), err)
+		}
+		if volume == nil {
+			//// No PV found for this claim
+		} else /* pv != nil */ {
+			
+			claimKey := claimToClaimKey(claim)
+			logger.V(4).Info(&quot;Synchronizing unbound PersistentVolumeClaim, volume found&quot;, &quot;PVC&quot;, klog.KObj(claim), &quot;volumeName&quot;, volume.Name, &quot;volumeStatus&quot;, getVolumeStatusForLogging(volume))
+      // 绑定 pv 和 pvc
+      // 这里会处理 pvc 的 spec.volumeName status 和 pv 的 status
+			if err = ctrl.bind(ctx, volume, claim); err != nil {
+				return err
+			}
+			return nil
+		}
+	} else /* pvc.Spec.VolumeName != nil */ {
+		/*
+      ......
+    */
+	}
+}
+
+// 选择
+func FindMatchingVolume(
+	claim *v1.PersistentVolumeClaim,
+	volumes []*v1.PersistentVolume,
+	node *v1.Node,
+	excludedVolumes map[string]*v1.PersistentVolume,
+	delayBinding bool) (*v1.PersistentVolume, error) {
+
+	var smallestVolume *v1.PersistentVolume
+	var smallestVolumeQty resource.Quantity
+	requestedQty := claim.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	requestedClass := GetPersistentVolumeClaimClass(claim)
+
+	var selector labels.Selector
+	if claim.Spec.Selector != nil {
+		internalSelector, err := metav1.LabelSelectorAsSelector(claim.Spec.Selector)
+		if err != nil {
+			return nil, fmt.Errorf(&quot;error creating internal label selector for claim: %v: %v&quot;, claimToClaimKey(claim), err)
+		}
+		selector = internalSelector
+	}
+
+	// Go through all available volumes with two goals:
+	// - find a volume that is either pre-bound by user or dynamically
+	//   provisioned for this claim. Because of this we need to loop through
+	//   all volumes.
+	// - find the smallest matching one if there is no volume pre-bound to
+	//   the claim.
+	for _, volume := range volumes {
+		if _, ok := excludedVolumes[volume.Name]; ok {
+			// Skip volumes in the excluded list
+			continue
+		}
+		if volume.Spec.ClaimRef != nil &amp;&amp; !IsVolumeBoundToClaim(volume, claim) {
+			continue
+		}
+
+		volumeQty := volume.Spec.Capacity[v1.ResourceStorage]
+		if volumeQty.Cmp(requestedQty) &lt; 0 {
+			continue
+		}
+		// filter out mismatching volumeModes
+		if CheckVolumeModeMismatches(&amp;claim.Spec, &amp;volume.Spec) {
+			continue
+		}
+
+		// check if PV's DeletionTimeStamp is set, if so, skip this volume.
+		if volume.ObjectMeta.DeletionTimestamp != nil {
+			continue
+		}
+
+		nodeAffinityValid := true
+		if node != nil {
+			// Scheduler path, check that the PV NodeAffinity
+			// is satisfied by the node
+			// CheckNodeAffinity is the most expensive call in this loop.
+			// We should check cheaper conditions first or consider optimizing this function.
+			err := CheckNodeAffinity(volume, node.Labels)
+			if err != nil {
+				nodeAffinityValid = false
+			}
+		}
+
+		if IsVolumeBoundToClaim(volume, claim) {
+			// If PV node affinity is invalid, return no match.
+			// This means the prebound PV (and therefore PVC)
+			// is not suitable for this node.
+			if !nodeAffinityValid {
+				return nil, nil
+			}
+
+			return volume, nil
+		}
+
+		if node == nil &amp;&amp; delayBinding {
+			// PV controller does not bind this claim.
+			// Scheduler will handle binding unbound volumes
+			// Scheduler path will have node != nil
+			continue
+		}
+
+		// filter out:
+		// - volumes in non-available phase
+		// - volumes whose labels don't match the claim's selector, if specified
+		// - volumes in Class that is not requested
+		// - volumes whose NodeAffinity does not match the node
+		if volume.Status.Phase != v1.VolumeAvailable {
+			// We ignore volumes in non-available phase, because volumes that
+			// satisfies matching criteria will be updated to available, binding
+			// them now has high chance of encountering unnecessary failures
+			// due to API conflicts.
+			continue
+		} else if selector != nil &amp;&amp; !selector.Matches(labels.Set(volume.Labels)) {
+			continue
+		}
+		if GetPersistentVolumeClass(volume) != requestedClass {
+			continue
+		}
+		if !nodeAffinityValid {
+			continue
+		}
+
+		if node != nil {
+			// Scheduler path
+			// Check that the access modes match
+			if !CheckAccessModes(claim, volume) {
+				continue
+			}
+		}
+
+		if smallestVolume == nil || smallestVolumeQty.Cmp(volumeQty) &gt; 0 {
+			smallestVolume = volume
+			smallestVolumeQty = volumeQty
+		}
+	}
+
+	if smallestVolume != nil {
+		// Found a matching volume
+		return smallestVolume, nil
+	}
+
+	return nil, nil
+}
+
+</code></pre><h3 id=kubelet-绑定>kubelet 绑定</h3><pre><code class=language-go>if err := os.MkdirAll(dir, 0750); err != nil {
+		return err
+}
+source := fmt.Sprintf(&quot;%s:%s&quot;, nfsMounter.server, nfsMounter.exportPath)
+options := []string{}
+if nfsMounter.readOnly {
+  options = append(options, &quot;ro&quot;)
+}
+mountOptions := util.JoinMountOptions(nfsMounter.mountOptions, options)
+err = nfsMounter.mounter.MountSensitiveWithoutSystemd(source, dir, &quot;nfs&quot;, mountOptions, nil)
+</code></pre><p>kubelet 就会在调用 <code>sudo mount -t nfs ...</code> 命令把 nfs 绑定到主机上 绑定的目录大概为 <code>/var/lib/kubelet/pods/[POD-ID]/volumes/</code></p><h2 id=storageclass>StorageClass</h2><p>StorageClass 是 Kubernetes 中用来定义存储卷的类型的资源对象，StorageClass 用来定义存储卷的类型，比如 NFS、iSCSI、Ceph、GlusterFS 等存储卷。StorageClass 是集群级别的资源，由集群管理员创建，用户可以使用 StorageClass 来动态创建 PV。</p><h3 id=动态创建存储卷>动态创建存储卷</h3><p>动态创建存储卷相比静态创建存储卷，少了集群管理员的干预，流程如下图所示：</p><p><img class=img-zoomable src=/images/7cc8ddd7-1c7d-430d-9332-d7da9d4a2752.png alt></p><p>创建一个 StorageClass pvc pod</p><pre><code class=language-yaml>apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-local-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 128Mi
+  storageClassName: local-storage
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test
+spec:
+  containers:
+  - image: ubuntu:22.04
+    name: ubuntu
+    command:
+    - /bin/sh
+    - -c
+    - sleep 10000
+    volumeMounts:
+    - mountPath: /data
+      name: my-local-pvc
+  volumes:
+  - name: my-local-pvc
+    persistentVolumeClaim:
+      claimName: my-local-pvc
+</code></pre><p>查看 pv</p><pre><code class=language-bash>❯ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                  STORAGECLASS    REASON   AGE
+pvc-9d257d8a-29a8-4abf-a1e2-c7e4953fc0ca   128Mi      RWO            Delete           Bound    default/my-local-pvc   local-storage            85s
+</code></pre><h3 id=storageclass-创建-pv-流程>StorageClass 创建 pv 流程</h3><pre><code class=language-go>// 还是 syncUnboundClaim 中
+// volume 为空，说明没有找到合适的 pv 那么去检查 如果 pvc 的 storageClassName 不为空，那么就会去找到对应的 storageClass
+if volume == nil {
+
+			switch {
+			case delayBinding &amp;&amp; !storagehelpers.IsDelayBindingProvisioning(claim):
+        // ......
+			case storagehelpers.GetPersistentVolumeClaimClass(claim) != &quot;&quot;:
+				// 如果 pvc 的 storageClassName 不为空，那么就会去找到对应的 storageClass
+				if err = ctrl.provisionClaim(ctx, claim); err != nil {
+					return err
+				}
+				return nil
+			default:
+			}
+			return nil
+}
+
+func (ctrl *PersistentVolumeController) provisionClaim(ctx context.Context, claim *v1.PersistentVolumeClaim) error {
+	plugin, storageClass, err := ctrl.findProvisionablePlugin(claim)
+	ctrl.scheduleOperation(logger, opName, func() error {
+		var err error
+		if plugin == nil {
+      // 如果是外部的 provisioner 这里我们就安装了 rancher.io/local-path 这个插件
+      // 所以这里会调用 provisionClaimOperationExternal
+			_, err = ctrl.provisionClaimOperationExternal(ctx, claim, storageClass)
+		} else {
+      // 内部的 provisioner 直接处理
+			_, err = ctrl.provisionClaimOperation(ctx, claim, plugin, storageClass)
+		}
+		return err
+	})
+	return nil
+}
+
+// 如果是外部的 provisioner 会在 pvc 的 annotations 加入 volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path 和 volume.kubernetes.io/storage-provisioner: rancher.io/local-path
+func (ctrl *PersistentVolumeController) setClaimProvisioner(ctx context.Context, claim *v1.PersistentVolumeClaim, provisionerName string) (*v1.PersistentVolumeClaim, error) {
+	if val, ok := claim.Annotations[storagehelpers.AnnStorageProvisioner]; ok &amp;&amp; val == provisionerName {
+		// annotation is already set, nothing to do
+		return claim, nil
+	}
+
+	// The volume from method args can be pointing to watcher cache. We must not
+	// modify these, therefore create a copy.
+	claimClone := claim.DeepCopy()
+	// TODO: remove the beta storage provisioner anno after the deprecation period
+	logger := klog.FromContext(ctx)
+	metav1.SetMetaDataAnnotation(&amp;claimClone.ObjectMeta, storagehelpers.AnnBetaStorageProvisioner, provisionerName)
+	metav1.SetMetaDataAnnotation(&amp;claimClone.ObjectMeta, storagehelpers.AnnStorageProvisioner, provisionerName)
+	updateMigrationAnnotations(logger, ctrl.csiMigratedPluginManager, ctrl.translator, claimClone.Annotations, true)
+	newClaim, err := ctrl.kubeClient.CoreV1().PersistentVolumeClaims(claim.Namespace).Update(ctx, claimClone, metav1.UpdateOptions{})
+	if err != nil {
+		return newClaim, err
+	}
+	_, err = ctrl.storeClaimUpdate(logger, newClaim)
+	if err != nil {
+		return newClaim, err
+	}
+	return newClaim, nil
+}
+</code></pre><h2 id=kubernetes-external-provisioner>kubernetes external provisioner</h2><p>kubernetes external provisioner 是一个独立的进程，用来动态创建 PV，它通过监听 StorageClass 的事件，当 StorageClass 的 ReclaimPolicy 为 Retain 时，会创建 PV。</p><p>在这里我新建一个 关于 nfs 的 external provisioner</p><pre><code class=language-go>package main
+
+import (
+	&quot;context&quot;
+	&quot;fmt&quot;
+	&quot;path/filepath&quot;
+
+	&quot;github.com/golang/glog&quot;
+	v1 &quot;k8s.io/api/core/v1&quot;
+	metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+	&quot;k8s.io/client-go/kubernetes&quot;
+	&quot;k8s.io/client-go/tools/clientcmd&quot;
+	&quot;k8s.io/client-go/util/homedir&quot;
+	&quot;sigs.k8s.io/controller-runtime/pkg/log&quot;
+	&quot;sigs.k8s.io/sig-storage-lib-external-provisioner/v10/controller&quot;
+)
+
+const provisionerName = &quot;provisioner.test.com/nfs&quot;
+
+var _ controller.Provisioner = &amp;nfsProvisioner{}
+
+type nfsProvisioner struct {
+	client kubernetes.Interface
+}
+
+func (p *nfsProvisioner) Provision(ctx context.Context, options controller.ProvisionOptions) (*v1.PersistentVolume, controller.ProvisioningState, error) {
+	if options.PVC.Spec.Selector != nil {
+		return nil, controller.ProvisioningFinished, fmt.Errorf(&quot;claim Selector is not supported&quot;)
+	}
+	glog.V(4).Infof(&quot;nfs provisioner: VolumeOptions %v&quot;, options)
+
+	pv := &amp;v1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: options.PVName,
+		},
+		Spec: v1.PersistentVolumeSpec{
+			PersistentVolumeReclaimPolicy: *options.StorageClass.ReclaimPolicy,
+			AccessModes:                   options.PVC.Spec.AccessModes,
+			MountOptions:                  options.StorageClass.MountOptions,
+			Capacity: v1.ResourceList{
+				v1.ResourceName(v1.ResourceStorage): options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)],
+			},
+			PersistentVolumeSource: v1.PersistentVolumeSource{
+				NFS: &amp;v1.NFSVolumeSource{
+					Server:   options.StorageClass.Parameters[&quot;server&quot;],
+					Path:     options.StorageClass.Parameters[&quot;path&quot;],
+					ReadOnly: options.StorageClass.Parameters[&quot;readOnly&quot;] == &quot;true&quot;,
+				},
+			},
+		},
+	}
+
+	return pv, controller.ProvisioningFinished, nil
+}
+
+func (p *nfsProvisioner) Delete(ctx context.Context, volume *v1.PersistentVolume) error {
+	// 因为是 nfs 没有产生实际的资源，所以这里不需要删除
+	// 如果在 provisioner 中创建了资源，那么这里需要删除
+	// 一般是调用 csi 创建/删除资源
+	return nil
+}
+
+func main() {
+	l := log.FromContext(context.Background())
+	config, err := clientcmd.BuildConfigFromFlags(&quot;&quot;, filepath.Join(homedir.HomeDir(), &quot;.kube&quot;, &quot;config&quot;))
+	if err != nil {
+		glog.Fatalf(&quot;Failed to create kubeconfig: %v&quot;, err)
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		glog.Fatalf(&quot;Failed to create client: %v&quot;, err)
+	}
+
+	clientNFSProvisioner := &amp;nfsProvisioner{
+		client: clientset,
+	}
+
+	pc := controller.NewProvisionController(l,
+		clientset,
+		provisionerName,
+		clientNFSProvisioner,
+		controller.LeaderElection(true),
+	)
+	glog.Info(&quot;Starting provision controller&quot;)
+	pc.Run(context.Background())
+}
+
+</code></pre><p>创建一个 nfs 的 storageClass</p><pre><code class=language-yaml>apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: my-nfs
+provisioner: provisioner.test.com/nfs
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  server: &quot;192.168.203.110&quot;
+  path: /data/nfs
+  readOnly: &quot;false&quot;
+</code></pre><pre><code class=language-YAML>apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-nfs-pvc
+spec:
+  storageClassName: my-nfs
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+</code></pre><pre><code class=language-yaml>apiVersion: v1
+kind: Pod
+metadata:
+  name: test-nfs
+spec:
+  containers:
+  - image: ubuntu:22.04
+    name: ubuntu
+    command:
+    - /bin/sh
+    - -c
+    - sleep 10000
+    volumeMounts:
+    - mountPath: /data
+      name: my-nfs-pvc
+  volumes:
+  - name: my-nfs-pvc
+    persistentVolumeClaim:
+      claimName: my-nfs-pvc
+</code></pre><pre><code class=language-bash>❯ kubectl exec -it test-nfs -- cat /data/nfs
+192.168.203.110:/data/nfs
+</code></pre><h2 id=csi-流程>CSI 流程</h2><p>持久化存储流程图如下：</p><p><img class=img-zoomable src=/images/d0dd40b9-6ce3-40bc-a048-0b3f1653d952.jpg alt></p><h3 id=provisioner>Provisioner</h3><p>当部署 csi-controller 时 ，会启动一个伴生容器，项目地址为 <code>https://github.com/kubernetes-csi/external-provisioner</code> 这个项目是一个 csi 的 provisioner
+它会监控属于自己的pvc，当有新的pvc创建时，会调用 csi 的 createVolume 方法，创建一个 volume，然后创建一个 pv。当 pvc 删除时，会调用 csi 的 deleteVolume 方法，然后删除 volume 和 pv。</p><p><img class=img-zoomable src=/images/8556b88f-a2a3-447a-a2ac-e0ed179e3b24.png alt></p><p><img class=img-zoomable src=/images/06af3f24-bdbc-44be-a08a-36f1da8ab8c5.png alt></p><h3 id=attacher>Attacher</h3><p>external-attacher 也是 csi-controller 的伴生容器，项目地址为 <code>https://github.com/kubernetes-csi/external-attacher</code> 这个项目是一个 csi 的 attacher, 它会监控 AttachDetachController 资源，当有新的资源创建时，会调用 csi 的 controllerPublishVolume 方法，挂载 volume 到 node 上。当资源删除时，会调用 csi 的 controllerUnpublishVolume 方法，卸载 volume。</p><p><img class=img-zoomable src=/images/d4f2c430-8b28-43e6-b150-960db81b6bf7.png alt></p><p><img class=img-zoomable src=/images/2486b91a-6a5a-476a-8795-a69305dd6011.png alt></p><h3 id=snapshotter>Snapshotter</h3><p>external-snapshotter 也是 csi-controller 的伴生容器，项目地址为 <code>https://github.com/kubernetes-csi/external-snapshotter</code> 这个项目是一个 csi 的 snapshotter, 它会监控 VolumeSnapshot 资源，当有新的资源创建时，会调用 csi 的 createSnapshot 方法，创建一个快照。当资源删除时，会调用 csi 的 deleteSnapshot 方法，删除快照。</p><h3 id=csi-node>csi-node</h3><p>csi-node 是一个 kubelet 的插件，所以它需要每个节点上都运行，当 pod 创建时，并且 VolumeAttachment 的 .spec.Attached 时，kubelet 会调用 csi 的 NodeStageVolume 函数，之后插件（csiAttacher）调用内部 in-tree CSI 插件（csiMountMgr）的 SetUp 函数，该函数内部会调用 csi 的 NodePublishVolume 函数，挂载 volume 到 pod 上。当 pod 删除时，kubelet 观察到包含 CSI 存储卷的 Pod 被删除，于是调用内部 in-tree CSI 插件（csiMountMgr）的 TearDown 函数，该函数内部会通过 unix domain socket 调用外部 CSI 插件的 NodeUnpublishVolume 函数。kubelet 调用内部 in-tree CSI 插件（csiAttacher）的 UnmountDevice 函数，该函数内部会通过 unix domain socket 调用外部 CSI 插件的 NodeUnstageVolume 函数。</p><p><img class=img-zoomable src=/images/d6bd8e82-8227-4e1e-9764-c66a34572398.png alt></p><p><img class=img-zoomable src=/images/b8a8b74d-4c97-4dcd-a097-20b59561b107.png alt></p><h3 id=csi-node-driver-registrar>csi-node-driver-registrar</h3><p>这个是 csi-node 的伴生容器，项目地址为 <code>https://github.com/kubernetes-csi/node-driver-registrar</code>,
+它的主要作用是向 kubelet 注册 csi 插件，kubelet 会调用 csi 插件的 Probe 方法，如果返回成功，kubelet 会调用 csi 插件的 NodeGetInfo 方法，获取节点信息。</p><h3 id=csi-livenessprobe>csi-livenessprobe</h3><p>这个是 csi-node 的伴生容器，项目地址为 <code>https://github.com/kubernetes-csi/livenessprobe</code>, 它的主要作用是给 kubernetes 的 livenessprobe 提供一个接口，用来检查 csi 插件是否正常运行。它在 <code>/healthz</code> 时，会调用 csi 的 Probe 方法，如果返回成功，返回 200，否则返回 500。</p><h2 id=reference>Reference</h2><ul><li><a href=https://developer.aliyun.com/article/754434 target=_blank>https://developer.aliyun.com/article/754434</a></li><li><a href=https://developer.aliyun.com/article/783464 target=_blank>https://developer.aliyun.com/article/783464</a></li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#pv-与-pvc>PV 与 PVC</a><ul><li><a href=#静态创建存储卷>静态创建存储卷</a></li><li><a href=#pvc-pv-绑定流程>pvc pv 绑定流程</a></li><li><a href=#kubelet-绑定>kubelet 绑定</a></li></ul></li><li><a href=#storageclass>StorageClass</a><ul><li><a href=#动态创建存储卷>动态创建存储卷</a></li><li><a href=#storageclass-创建-pv-流程>StorageClass 创建 pv 流程</a></li></ul></li><li><a href=#kubernetes-external-provisioner>kubernetes external provisioner</a></li><li><a href=#csi-流程>CSI 流程</a><ul><li><a href=#provisioner>Provisioner</a></li><li><a href=#attacher>Attacher</a></li><li><a href=#snapshotter>Snapshotter</a></li><li><a href=#csi-node>csi-node</a></li><li><a href=#csi-node-driver-registrar>csi-node-driver-registrar</a></li><li><a href=#csi-livenessprobe>csi-livenessprobe</a></li></ul></li><li><a href=#reference>Reference</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#pv-与-pvc>PV 与 PVC</a><ul><li><a href=#静态创建存储卷>静态创建存储卷</a></li><li><a href=#pvc-pv-绑定流程>pvc pv 绑定流程</a></li><li><a href=#kubelet-绑定>kubelet 绑定</a></li></ul></li><li><a href=#storageclass>StorageClass</a><ul><li><a href=#动态创建存储卷>动态创建存储卷</a></li><li><a href=#storageclass-创建-pv-流程>StorageClass 创建 pv 流程</a></li></ul></li><li><a href=#kubernetes-external-provisioner>kubernetes external provisioner</a></li><li><a href=#csi-流程>CSI 流程</a><ul><li><a href=#provisioner>Provisioner</a></li><li><a href=#attacher>Attacher</a></li><li><a href=#snapshotter>Snapshotter</a></li><li><a href=#csi-node>csi-node</a></li><li><a href=#csi-node-driver-registrar>csi-node-driver-registrar</a></li><li><a href=#csi-livenessprobe>csi-livenessprobe</a></li></ul></li><li><a href=#reference>Reference</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

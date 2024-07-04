@@ -1,0 +1,1045 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>etcd watch 实现原理 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="boltdb,etcd,golang,数据库,kubernetes"><meta property="og:title" content="etcd watch 实现原理"><meta name=twitter:title content="etcd watch 实现原理"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2024/06/10/etcd-watch-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/"><meta property="og:description" content="介绍 在 etcd 中，watch 是一个非常重要的特性，它可以让客户端监控 etcd 中的 key 或者一组 key，当 key 发生变化时，etcd 会通知客户端。本文将介绍 etcd watch 的实现原理。 etcdctl watch /test # 当 /test 的值发生变化时，会输出如下信息 PUT /test a PUT"><meta name=twitter:description content="介绍 在 etcd 中，watch 是一个非常重要的特性，它可以让客户端监控 etcd 中的 key 或者一组 key，当 key 发生变化时，etcd 会通知客户端。本文将介绍 etcd watch 的实现原理。 etcdctl watch /test # 当 /test 的值发生变化时，会输出如下信息 PUT /test a PUT"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2024-06-10T14:16:00+08:00"><meta property="article:modified_time" content="2024-06-10T14:16:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/06/10/etcd-watch-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/>etcd watch 实现原理</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-06-10</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;5056 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/boltdb>boltdb</a>&nbsp;<a href=/tags/etcd>etcd</a>&nbsp;<a href=/tags/golang>golang</a>&nbsp;<a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93>数据库</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=介绍>介绍</h2><p>在 etcd 中，watch 是一个非常重要的特性，它可以让客户端监控 etcd 中的 key 或者一组 key，当 key 发生变化时，etcd 会通知客户端。本文将介绍 etcd watch 的实现原理。</p><pre><code class=language-BASH>etcdctl watch /test
+# 当 /test 的值发生变化时，会输出如下信息
+PUT
+/test
+a
+PUT
+/test
+b
+DELETE
+/test
+</code></pre><h2 id=watch-的-api>watch 的 api</h2><p>etcd watch api 是由 grpc stream 实现的，客户端通过 grpc stream 发送 watch 请求，etcd 会将 key 的变化通过 stream 返回给客户端。</p><pre><code class=language-protobuf>rpc Watch(stream WatchRequest) returns (stream WatchResponse) {
+      option (google.api.http) = {
+        post: &quot;/v3/watch&quot;
+        body: &quot;*&quot;
+    };
+}
+</code></pre><h2 id=api-实现>api 实现</h2><pre><code class=language-go>func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
+	sws := serverWatchStream{
+		lg: ws.lg,
+
+		clusterID: ws.clusterID,
+		memberID:  ws.memberID,
+
+		maxRequestBytes: ws.maxRequestBytes,
+
+		sg:        ws.sg,
+		watchable: ws.watchable,
+		ag:        ws.ag,
+
+		gRPCStream:  stream,
+		watchStream: ws.watchable.NewWatchStream(),
+		// chan for sending control response like watcher created and canceled.
+		ctrlStream: make(chan *pb.WatchResponse, ctrlStreamBufLen),
+
+		progress: make(map[mvcc.WatchID]bool),
+		prevKV:   make(map[mvcc.WatchID]bool),
+		fragment: make(map[mvcc.WatchID]bool),
+
+		closec: make(chan struct{}),
+	}
+
+	sws.wg.Add(1)
+	go func() {
+        // 开启一个 goroutine 处理新的 event 然后发送给客户端
+		sws.sendLoop()
+		sws.wg.Done()
+	}()
+
+	errc := make(chan error, 1)
+	
+	go func() {
+        // 开启一个 goroutine 处理客户端发送的 watch 请求
+		if rerr := sws.recvLoop(); rerr != nil {
+			if isClientCtxErr(stream.Context().Err(), rerr) {
+				sws.lg.Debug(&quot;failed to receive watch request from gRPC stream&quot;, zap.Error(rerr))
+			} else {
+				sws.lg.Warn(&quot;failed to receive watch request from gRPC stream&quot;, zap.Error(rerr))
+				streamFailures.WithLabelValues(&quot;receive&quot;, &quot;watch&quot;).Inc()
+			}
+			errc &lt;- rerr
+		}
+	}()
+
+	// 处理结束
+	select {
+	case err = &lt;-errc:
+		if err == context.Canceled {
+			err = rpctypes.ErrGRPCWatchCanceled
+		}
+		close(sws.ctrlStream)
+	case &lt;-stream.Context().Done():
+		err = stream.Context().Err()
+		if err == context.Canceled {
+			err = rpctypes.ErrGRPCWatchCanceled
+		}
+	}
+
+	sws.close()
+	return err
+}
+
+</code></pre><p>这里 主要的逻辑是开启两个 goroutine，一个用于处理客户端发送的 watch 请求，另一个用于处理新的 event 然后发送给客户端。</p><h3 id=sendloop>sendLoop</h3><pre><code class=language-go>func (sws *serverWatchStream) sendLoop() {
+	// watch ids that are currently active
+	ids := make(map[mvcc.WatchID]struct{})
+	// watch responses pending on a watch id creation message
+	pending := make(map[mvcc.WatchID][]*pb.WatchResponse)
+
+	interval := GetProgressReportInterval()
+	progressTicker := time.NewTicker(interval)
+
+	defer func() {
+		progressTicker.Stop()
+		// 清空chan ，清理待处理 event
+		for ws := range sws.watchStream.Chan() {
+			mvcc.ReportEventReceived(len(ws.Events))
+		}
+		for _, wrs := range pending {
+			for _, ws := range wrs {
+				mvcc.ReportEventReceived(len(ws.Events))
+			}
+		}
+	}()
+
+	for {
+		select {
+		case wresp, ok := &lt;-sws.watchStream.Chan():
+            // 从 watchStream.Chan() 中获取 event
+            // 然后发送给客户端 
+			if !ok {
+				return
+			}
+
+			evs := wresp.Events
+			events := make([]*mvccpb.Event, len(evs))
+			sws.mu.RLock()
+			needPrevKV := sws.prevKV[wresp.WatchID]
+			sws.mu.RUnlock()
+			for i := range evs {
+				events[i] = &amp;evs[i]
+				if needPrevKV &amp;&amp; !IsCreateEvent(evs[i]) {
+					opt := mvcc.RangeOptions{Rev: evs[i].Kv.ModRevision - 1}
+					r, err := sws.watchable.Range(context.TODO(), evs[i].Kv.Key, nil, opt)
+					if err == nil &amp;&amp; len(r.KVs) != 0 {
+						events[i].PrevKv = &amp;(r.KVs[0])
+					}
+				}
+			}
+
+			canceled := wresp.CompactRevision != 0
+			wr := &amp;pb.WatchResponse{
+				Header:          sws.newResponseHeader(wresp.Revision),
+				WatchId:         int64(wresp.WatchID),
+				Events:          events,
+				CompactRevision: wresp.CompactRevision,
+				Canceled:        canceled,
+			}
+
+			// Progress notifications can have WatchID -1
+			// if they announce on behalf of multiple watchers
+			if wresp.WatchID != clientv3.InvalidWatchID {
+				if _, okID := ids[wresp.WatchID]; !okID {
+					// buffer if id not yet announced
+					wrs := append(pending[wresp.WatchID], wr)
+					pending[wresp.WatchID] = wrs
+					continue
+				}
+			}
+
+			mvcc.ReportEventReceived(len(evs))
+
+			sws.mu.RLock()
+			fragmented, ok := sws.fragment[wresp.WatchID]
+			sws.mu.RUnlock()
+
+			var serr error
+			// gofail: var beforeSendWatchResponse struct{}
+			if !fragmented &amp;&amp; !ok {
+				serr = sws.gRPCStream.Send(wr)
+			} else {
+				serr = sendFragments(wr, sws.maxRequestBytes, sws.gRPCStream.Send)
+			}
+
+			if serr != nil {
+				if isClientCtxErr(sws.gRPCStream.Context().Err(), serr) {
+					sws.lg.Debug(&quot;failed to send watch response to gRPC stream&quot;, zap.Error(serr))
+				} else {
+					sws.lg.Warn(&quot;failed to send watch response to gRPC stream&quot;, zap.Error(serr))
+					streamFailures.WithLabelValues(&quot;send&quot;, &quot;watch&quot;).Inc()
+				}
+				return
+			}
+
+			sws.mu.Lock()
+			if len(evs) &gt; 0 &amp;&amp; sws.progress[wresp.WatchID] {
+				// elide next progress update if sent a key update
+				sws.progress[wresp.WatchID] = false
+			}
+			sws.mu.Unlock()
+
+		case c, ok := &lt;-sws.ctrlStream:
+            // 处理客户端发送的 watch 请求
+			if !ok {
+				return
+			}
+
+			if err := sws.gRPCStream.Send(c); err != nil {
+				if isClientCtxErr(sws.gRPCStream.Context().Err(), err) {
+					sws.lg.Debug(&quot;failed to send watch control response to gRPC stream&quot;, zap.Error(err))
+				} else {
+					sws.lg.Warn(&quot;failed to send watch control response to gRPC stream&quot;, zap.Error(err))
+					streamFailures.WithLabelValues(&quot;send&quot;, &quot;watch&quot;).Inc()
+				}
+				return
+			}
+
+			// track id creation
+			wid := mvcc.WatchID(c.WatchId)
+
+			verify.Assert(!(c.Canceled &amp;&amp; c.Created) || wid == clientv3.InvalidWatchID, &quot;unexpected watchId: %d, wanted: %d, since both 'Canceled' and 'Created' are true&quot;, wid, clientv3.InvalidWatchID)
+
+			if c.Canceled &amp;&amp; wid != clientv3.InvalidWatchID {
+				delete(ids, wid)
+				continue
+			}
+			if c.Created {
+				// flush buffered events
+				ids[wid] = struct{}{}
+				for _, v := range pending[wid] {
+					mvcc.ReportEventReceived(len(v.Events))
+					if err := sws.gRPCStream.Send(v); err != nil {
+						if isClientCtxErr(sws.gRPCStream.Context().Err(), err) {
+							sws.lg.Debug(&quot;failed to send pending watch response to gRPC stream&quot;, zap.Error(err))
+						} else {
+							sws.lg.Warn(&quot;failed to send pending watch response to gRPC stream&quot;, zap.Error(err))
+							streamFailures.WithLabelValues(&quot;send&quot;, &quot;watch&quot;).Inc()
+						}
+						return
+					}
+				}
+				delete(pending, wid)
+			}
+
+		case &lt;-progressTicker.C:
+			sws.mu.Lock()
+			for id, ok := range sws.progress {
+				if ok {
+					sws.watchStream.RequestProgress(id)
+				}
+				sws.progress[id] = true
+			}
+			sws.mu.Unlock()
+
+		case &lt;-sws.closec:
+			return
+		}
+	}
+}
+
+</code></pre><p>这里使用了 for select 循环：</p><ol><li>从 watchStream.Chan() 中获取 event 然后发送给客户端。</li><li>处理客户端发送的 watch 请求。</li><li>dispatch progress 事件。</li><li>处理结束。</li></ol><h3 id=recvloop>recvLoop</h3><pre><code class=language-go>func (sws *serverWatchStream) recvLoop() error {
+	for {
+		req, err := sws.gRPCStream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		switch uv := req.RequestUnion.(type) {
+		case *pb.WatchRequest_CreateRequest:
+			if uv.CreateRequest == nil {
+				break
+			}
+
+			creq := uv.CreateRequest
+			if len(creq.Key) == 0 {
+				// \x00 is the smallest key
+				creq.Key = []byte{0}
+			}
+			if len(creq.RangeEnd) == 0 {
+				// force nil since watchstream.Watch distinguishes
+				// between nil and []byte{} for single key / &gt;=
+				creq.RangeEnd = nil
+			}
+			if len(creq.RangeEnd) == 1 &amp;&amp; creq.RangeEnd[0] == 0 {
+				// support  &gt;= key queries
+				creq.RangeEnd = []byte{}
+			}
+
+			err := sws.isWatchPermitted(creq)
+			if err != nil {
+				var cancelReason string
+				switch err {
+				case auth.ErrInvalidAuthToken:
+					cancelReason = rpctypes.ErrGRPCInvalidAuthToken.Error()
+				case auth.ErrAuthOldRevision:
+					cancelReason = rpctypes.ErrGRPCAuthOldRevision.Error()
+				case auth.ErrUserEmpty:
+					cancelReason = rpctypes.ErrGRPCUserEmpty.Error()
+				default:
+					if err != auth.ErrPermissionDenied {
+						sws.lg.Error(&quot;unexpected error code&quot;, zap.Error(err))
+					}
+					cancelReason = rpctypes.ErrGRPCPermissionDenied.Error()
+				}
+
+				wr := &amp;pb.WatchResponse{
+					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
+					WatchId:      clientv3.InvalidWatchID,
+					Canceled:     true,
+					Created:      true,
+					CancelReason: cancelReason,
+				}
+
+				select {
+				case sws.ctrlStream &lt;- wr:
+					continue
+				case &lt;-sws.closec:
+					return nil
+				}
+			}
+
+			filters := FiltersFromRequest(creq)
+
+			wsrev := sws.watchStream.Rev()
+			rev := creq.StartRevision
+			if rev == 0 {
+				rev = wsrev + 1
+			}
+			id, err := sws.watchStream.Watch(mvcc.WatchID(creq.WatchId), creq.Key, creq.RangeEnd, rev, filters...)
+			if err == nil {
+				sws.mu.Lock()
+				if creq.ProgressNotify {
+					sws.progress[id] = true
+				}
+				if creq.PrevKv {
+					sws.prevKV[id] = true
+				}
+				if creq.Fragment {
+					sws.fragment[id] = true
+				}
+				sws.mu.Unlock()
+			} else {
+				id = clientv3.InvalidWatchID
+			}
+
+			wr := &amp;pb.WatchResponse{
+				Header:   sws.newResponseHeader(wsrev),
+				WatchId:  int64(id),
+				Created:  true,
+				Canceled: err != nil,
+			}
+			if err != nil {
+				wr.CancelReason = err.Error()
+			}
+			select {
+			case sws.ctrlStream &lt;- wr:
+			case &lt;-sws.closec:
+				return nil
+			}
+
+		case *pb.WatchRequest_CancelRequest:
+			if uv.CancelRequest != nil {
+				id := uv.CancelRequest.WatchId
+				err := sws.watchStream.Cancel(mvcc.WatchID(id))
+				if err == nil {
+					sws.ctrlStream &lt;- &amp;pb.WatchResponse{
+						Header:   sws.newResponseHeader(sws.watchStream.Rev()),
+						WatchId:  id,
+						Canceled: true,
+					}
+					sws.mu.Lock()
+					delete(sws.progress, mvcc.WatchID(id))
+					delete(sws.prevKV, mvcc.WatchID(id))
+					delete(sws.fragment, mvcc.WatchID(id))
+					sws.mu.Unlock()
+				}
+			}
+		case *pb.WatchRequest_ProgressRequest:
+			if uv.ProgressRequest != nil {
+				sws.mu.Lock()
+				sws.watchStream.RequestProgressAll()
+				sws.mu.Unlock()
+			}
+		default:
+			// we probably should not shutdown the entire stream when
+			// receive an invalid command.
+			// so just do nothing instead.
+			sws.lg.Sugar().Infof(&quot;invalid watch request type %T received in gRPC stream&quot;, uv)
+			continue
+		}
+	}
+}
+</code></pre><p>这里主要处理客户端发送的 watch 请求，然后发送给 ctrlStream。sendLoop 会从 ctrlStream 中获取 event 然后发送给客户端。</p><h2 id=watchstream>WatchStream</h2><p>这个 inferface 才是处理 watch 的主要逻辑</p><pre><code class=language-go>// WatchStream 是一个接口，定义了一个流式处理watch请求的机制
+type WatchStream interface {
+	// Watch 创建一个观察者。观察者会监听在给定的键或范围 [key, end) 上发生的事件或已发生的事件。
+	//
+	// 整个事件历史都可以被观察到，除非被压缩。
+	// 如果 &quot;startRev&quot; &lt;= 0，watch 将观察在当前修订版本之后的事件。
+	//
+	// 返回的 &quot;id&quot; 是这个观察者的ID。它作为 WatchID 出现在通过 stream 通道发送到创建的观察者的事件中。
+	// 当 WatchID 不等于 AutoWatchID 时，使用指定的 WatchID，否则返回自动生成的 WatchID。
+	Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error)
+
+	// Chan 返回一个通道。所有的watch响应将被发送到这个返回的通道。
+	Chan() &lt;-chan WatchResponse
+
+	// RequestProgress 请求给定ID的观察者的进度。响应只有在观察者当前同步时才会被发送。
+	// 响应将通过与此流关联的 WatchResponse 通道发送，以确保正确的顺序。
+	// 响应不包含事件。响应中的修订版本是观察者自同步以来的进度。
+	RequestProgress(id WatchID)
+
+	// RequestProgressAll 请求所有共享此流的观察者的进度通知。
+	// 如果所有观察者都已同步，将向此流的任意观察者发送带有watch ID -1的进度通知，并返回 true。
+	RequestProgressAll() bool
+
+	// Cancel 通过给定ID取消观察者。如果观察者不存在，将返回错误。
+	Cancel(id WatchID) error
+
+	// Close 关闭通道并释放所有相关资源。
+	Close()
+
+	// Rev 返回流上观察到的KV的当前修订版本。
+	Rev() int64
+}
+
+// WatchResponse 表示一个watch操作的响应。
+type WatchResponse struct {
+	// WatchID 是发送此响应的观察者的ID。
+	WatchID WatchID
+
+	// Events 包含所有需要发送的事件。
+	Events []mvccpb.Event
+
+	// Revision 是创建watch响应时KV的修订版本。
+	// 对于正常响应，修订版本应该与Events中最后一个修改的修订版本相同。
+	// 对于延迟响应的未同步观察者，修订版本大于Events中最后一个修改的修订版本。
+	Revision int64
+
+	// CompactRevision 在观察者由于压缩而被取消时设置。
+	CompactRevision int64
+}
+
+// 实现了 WatchStream
+// watchStream 包含共享一个流通道发送被观察事件和其他控制事件的观察者集合。
+type watchStream struct {
+	// 可观察对象（例如KV存储）
+	watchable watchable
+	// 用于发送watch响应的通道
+	ch        chan WatchResponse
+
+	// 互斥锁，保护以下字段
+	mu sync.Mutex 
+	// nextID 是为此流中下一个新观察者预分配的ID
+	nextID   WatchID
+	// 标志流是否已关闭
+	closed   bool
+	// 取消函数的映射，用于取消特定的观察者
+	cancels  map[WatchID]cancelFunc
+	// 观察者的映射，根据观察者ID索引
+	watchers map[WatchID]*watcher
+}
+
+// Watch 在流中创建一个新的观察者并返回其 WatchID。
+func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error) {
+	// 防止键 &gt;= 结束键（按字典顺序）的错误范围
+	// 带有 'WithFromKey' 的watch请求具有空字节范围结束
+	if len(end) != 0 &amp;&amp; bytes.Compare(key, end) != -1 {
+		return -1, ErrEmptyWatcherRange
+	}
+
+	// 获取互斥锁
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	// 如果流已关闭，返回错误
+	if ws.closed {
+		return -1, ErrEmptyWatcherRange
+	}
+
+	// 自动生成 WatchID
+	if id == clientv3.AutoWatchID {
+		for ws.watchers[ws.nextID] != nil {
+			ws.nextID++
+		}
+		id = ws.nextID
+		ws.nextID++
+	} else if _, ok := ws.watchers[id]; ok {
+		return -1, ErrWatcherDuplicateID
+	}
+
+	// 创建新的观察者
+	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
+
+	// 保存取消函数和观察者
+	ws.cancels[id] = c
+	ws.watchers[id] = w
+	return id, nil
+}
+// Chan 返回用于接收watch响应的通道。
+func (ws *watchStream) Chan() &lt;-chan WatchResponse {
+	return ws.ch
+}
+// Cancel 取消具有给定ID的观察者。
+func (ws *watchStream) Cancel(id WatchID) error {
+	// 获取互斥锁
+	ws.mu.Lock()
+	cancel, ok := ws.cancels[id]
+	w := ws.watchers[id]
+	ok = ok &amp;&amp; !ws.closed
+	ws.mu.Unlock()
+
+	// 如果观察者不存在或流已关闭，返回错误
+	if !ok {
+		return ErrWatcherNotExist
+	}
+	cancel()
+
+	// 获取互斥锁
+	ws.mu.Lock()
+	// 在取消之前不删除观察者，以确保 Close() 调用时等待取消
+	if ww := ws.watchers[id]; ww == w {
+		delete(ws.cancels, id)
+		delete(ws.watchers, id)
+	}
+	ws.mu.Unlock()
+
+	return nil
+}
+// Close 关闭通道并释放所有相关资源。
+func (ws *watchStream) Close() {
+	// 获取互斥锁
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+
+	// 取消所有观察者
+	for _, cancel := range ws.cancels {
+		cancel()
+	}
+	// 标记流已关闭并关闭通道
+	ws.closed = true
+	close(ws.ch)
+	watchStreamGauge.Dec()
+}
+// Rev 返回流上观察到的KV的当前修订版本。
+func (ws *watchStream) Rev() int64 {
+	// 获取互斥锁
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	return ws.watchable.rev()
+}
+// RequestProgress 请求给定ID的观察者的进度。
+func (ws *watchStream) RequestProgress(id WatchID) {
+	// 获取互斥锁
+	ws.mu.Lock()
+	w, ok := ws.watchers[id]
+	ws.mu.Unlock()
+	// 如果观察者不存在，直接返回
+	if !ok {
+		return
+	}
+	// 请求进度
+	ws.watchable.progress(w)
+}
+// RequestProgressAll 请求所有观察者的进度通知。
+func (ws *watchStream) RequestProgressAll() bool {
+	// 获取互斥锁
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	return ws.watchable.progressAll(ws.watchers)
+}
+</code></pre><ol><li>Watch 方法：创建一个新的观察者，如果指定的范围不正确或观察者ID重复，则返回错误。否则，创建观察者并保存取消函数和观察者实例。</li><li>Chan 方法：返回用于接收watch响应的通道。</li><li>Cancel 方法：取消给定ID的观察者，删除相关的取消函数和观察者实例。</li><li>Close 方法：关闭所有观察者并释放资源。</li><li>Rev 方法：返回当前观察到的KV修订版本。</li><li>RequestProgress 方法：请求特定观察者的进度。</li><li>RequestProgressAll 方法：请求所有观察者的进度通知。</li></ol><p>可以可到 当调用 Watch 的时候 每个 watchId 都会调用 <code>watchable.watch</code> 并把自己 ch 放入进去</p><h2 id=watchable>watchable</h2><p><img class=img-zoomable src=/images/ad802824-86e0-42a7-b84d-d2dfe2076620.png alt></p><pre><code class=language-go>// watchable 接口定义了可观察对象的行为
+type watchable interface {
+    // watch 创建一个新的观察者，用于监听指定键或范围[startRev, end)上的事件。
+    // 返回观察者指针和取消函数。
+    watch(key, end []byte, startRev int64, id WatchID, ch chan&lt;- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
+    
+    // progress 通知特定观察者当前的进度。
+    progress(w *watcher)
+    
+    // progressAll 通知所有观察者当前的进度。
+    // 如果所有观察者都已同步，则返回 true。
+    progressAll(watchers map[WatchID]*watcher) bool
+    
+    // rev 返回当前观察到的修订版本。
+    rev() int64
+}
+
+
+// watchableStore 是一个实现了 watchable 接口的结构体，代表一个可观察的存储
+type watchableStore struct {
+    // store 是一个指向基础存储的指针
+    *store
+
+    // mu 保护观察者组和批次。为了避免死锁，在锁定 store.mu 之前不应锁定 mu。
+    mu sync.RWMutex
+
+    // victims 是在 watch 通道上被阻塞的观察者批次
+    victims []watcherBatch
+    victimc chan struct{}
+
+    // unsynced 包含所有需要同步已经发生的事件的未同步观察者
+    unsynced watcherGroup
+
+    // synced 包含所有与存储进度同步的观察者
+    // 映射的键是观察者监听的键
+    synced watcherGroup
+
+    // stopc 是一个用于停止操作的通道
+    stopc chan struct{}
+
+    // wg 用于等待所有 goroutine 完成
+    wg sync.WaitGroup
+}
+
+func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan&lt;- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
+	// 创建一个新的观察者
+	wa := &amp;watcher{
+		key:    key,
+		end:    end,
+		minRev: startRev,
+		id:     id,
+		ch:     ch,
+		fcs:    fcs,
+	}
+
+	// 锁定 watchableStore 的互斥锁
+	s.mu.Lock()
+	// 锁定 store 的读写锁用于获取当前修订版本
+	s.revMu.RLock()
+	// 判断观察者是否与当前存储修订版本同步
+	synced := startRev &gt; s.store.currentRev || startRev == 0
+	if synced {
+		// 如果同步，设置最小修订版本为当前修订版本的下一个版本
+		wa.minRev = s.store.currentRev + 1
+		if startRev &gt; wa.minRev {
+			wa.minRev = startRev
+		}
+		// 将观察者添加到同步观察者组中
+		s.synced.add(wa)
+	} else {
+		// 如果未同步，增加慢速观察者计数器
+		slowWatcherGauge.Inc()
+		// 将观察者添加到未同步观察者组中
+		s.unsynced.add(wa)
+	}
+	// 解锁 store 的读写锁
+	s.revMu.RUnlock()
+	// 解锁 watchableStore 的互斥锁
+	s.mu.Unlock()
+
+	// 增加观察者计数器
+	watcherGauge.Inc()
+
+	// 返回观察者和取消函数
+	return wa, func() { s.cancelWatcher(wa) }
+}
+</code></pre><h3 id=newwatchablestore>newWatchableStore</h3><pre><code class=language-go>func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	s := &amp;watchableStore{
+		store:    NewStore(lg, b, le, cfg),
+		victimc:  make(chan struct{}, 1),
+		unsynced: newWatcherGroup(),
+		synced:   newWatcherGroup(),
+		stopc:    make(chan struct{}),
+	}
+	s.store.ReadView = &amp;readView{s}
+	s.store.WriteView = &amp;writeView{s}
+	if s.le != nil {
+		// use this store as the deleter so revokes trigger watch events
+		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
+	}
+	s.wg.Add(2)
+	go s.syncWatchersLoop()
+	go s.syncVictimsLoop()
+	return s
+}
+</code></pre><h3 id=syncwatchersloop>syncWatchersLoop</h3><pre><code class=language-go>// syncWatchersLoop 每100毫秒同步一次unsynced集合中的观察者。
+func (s *watchableStore) syncWatchersLoop() {
+	defer s.wg.Done()
+
+	// 设置等待时间为100毫秒
+	waitDuration := 100 * time.Millisecond
+	delayTicker := time.NewTicker(waitDuration)
+	defer delayTicker.Stop()
+
+	for {
+		// 锁定以获取未同步观察者的数量
+		s.mu.RLock()
+		st := time.Now()
+		lastUnsyncedWatchers := s.unsynced.size()
+		s.mu.RUnlock()
+
+		unsyncedWatchers := 0
+		// 如果有未同步观察者，同步这些观察者
+		if lastUnsyncedWatchers &gt; 0 {
+			unsyncedWatchers = s.syncWatchers()
+		}
+		syncDuration := time.Since(st)
+
+		// 重置定时器
+		delayTicker.Reset(waitDuration)
+		// 检查是否有更多待处理的工作
+		if unsyncedWatchers != 0 &amp;&amp; lastUnsyncedWatchers &gt; unsyncedWatchers {
+			// 公平对待其他存储操作，通过延长时间来避免占用太多资源
+			delayTicker.Reset(syncDuration)
+		}
+
+		// 等待定时器或停止信号
+		select {
+		case &lt;-delayTicker.C:
+		case &lt;-s.stopc:
+			return
+		}
+	}
+}
+
+// syncWatchers 通过以下步骤同步未同步的观察者：
+//  1. 从未同步观察者组中选择一组观察者
+//  2. 迭代该组以获取最小修订版本并移除压缩的观察者
+//  3. 使用最小修订版本获取所有键值对，并将这些事件发送给观察者
+//  4. 从未同步组中移除已同步的观察者，并移动到同步组中
+func (s *watchableStore) syncWatchers() int {
+	// 锁定
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 如果没有未同步观察者，返回0
+	if s.unsynced.size() == 0 {
+		return 0
+	}
+
+	// 锁定存储的读写锁
+	s.store.revMu.RLock()
+	defer s.store.revMu.RUnlock()
+
+	// 为了从未同步观察者中找到键值对，我们需要找到最小修订版本
+	curRev := s.store.currentRev
+	compactionRev := s.store.compactMainRev
+
+	// 选择一组观察者
+	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
+	minBytes, maxBytes := NewRevBytes(), NewRevBytes()
+	minBytes = RevToBytes(Revision{Main: minRev}, minBytes)
+	maxBytes = RevToBytes(Revision{Main: curRev + 1}, maxBytes)
+
+	// UnsafeRange 返回键和值。在boltdb中，键是修订版本，值是实际的键值对。
+	tx := s.store.b.ReadTx()
+	tx.RLock()
+	revs, vs := tx.UnsafeRange(schema.Key, minBytes, maxBytes, 0)
+	evs := kvsToEvents(s.store.lg, wg, revs, vs)
+	// 必须在kvsToEvents之后解锁，因为vs（来自boltdb内存）不是深拷贝。
+	// 我们只能在Unmarshal之后解锁，这将进行深拷贝。
+	// 否则我们将在boltdb重新mmap期间触发SIGSEGV。
+	tx.RUnlock()
+
+	// 创建一个新的观察者批次
+	victims := make(watcherBatch)
+	wb := newWatcherBatch(wg, evs)
+	for w := range wg.watchers {
+		if w.minRev &lt; compactionRev {
+			// 跳过因压缩而无法发送响应的观察者
+			continue
+		}
+		w.minRev = curRev + 1
+
+		eb, ok := wb[w]
+		if !ok {
+			// 将未通知的观察者移至同步
+			s.synced.add(w)
+			s.unsynced.delete(w)
+			continue
+		}
+
+		if eb.moreRev != 0 {
+			w.minRev = eb.moreRev
+		}
+
+		// 发送响应
+		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev}) {
+			pendingEventsGauge.Add(float64(len(eb.evs)))
+		} else {
+			w.victim = true
+		}
+
+		// 处理受害者观察者
+		if w.victim {
+			victims[w] = eb
+		} else {
+			if eb.moreRev != 0 {
+				// 保持未同步状态；还有更多要读取
+				continue
+			}
+			s.synced.add(w)
+		}
+		s.unsynced.delete(w)
+	}
+	s.addVictim(victims)
+
+	// 更新慢速观察者计数器
+	vsz := 0
+	for _, v := range s.victims {
+		vsz += len(v)
+	}
+	slowWatcherGauge.Set(float64(s.unsynced.size() + vsz))
+
+	return s.unsynced.size()
+}
+</code></pre><h4 id=watcher--send>watcher & send</h4><pre><code class=language-go>type watcher struct {
+	// the watcher key
+	key []byte
+	// end indicates the end of the range to watch.
+	// If end is set, the watcher is on a range.
+	end []byte
+
+	// victim is set when ch is blocked and undergoing victim processing
+	victim bool
+
+	// compacted is set when the watcher is removed because of compaction
+	compacted bool
+
+	// restore is true when the watcher is being restored from leader snapshot
+	// which means that this watcher has just been moved from &quot;synced&quot; to &quot;unsynced&quot;
+	// watcher group, possibly with a future revision when it was first added
+	// to the synced watcher
+	// &quot;unsynced&quot; watcher revision must always be &lt;= current revision,
+	// except when the watcher were to be moved from &quot;synced&quot; watcher group
+	restore bool
+
+	// minRev is the minimum revision update the watcher will accept
+	minRev int64
+	id     WatchID
+
+	fcs []FilterFunc
+	// a chan to send out the watch response.
+	// The chan might be shared with other watchers.
+	ch chan&lt;- WatchResponse
+}
+
+func (w *watcher) send(wr WatchResponse) bool {
+	progressEvent := len(wr.Events) == 0
+
+	if len(w.fcs) != 0 {
+		ne := make([]mvccpb.Event, 0, len(wr.Events))
+		for i := range wr.Events {
+			filtered := false
+			for _, filter := range w.fcs {
+				if filter(wr.Events[i]) {
+					filtered = true
+					break
+				}
+			}
+			if !filtered {
+				ne = append(ne, wr.Events[i])
+			}
+		}
+		wr.Events = ne
+	}
+
+	// if all events are filtered out, we should send nothing.
+	if !progressEvent &amp;&amp; len(wr.Events) == 0 {
+		return true
+	}
+	select {
+	case w.ch &lt;- wr:
+		return true
+	default:
+		return false
+	}
+}
+
+</code></pre><h3 id=syncvictimsloop>syncVictimsLoop</h3><pre><code class=language-go>// syncVictimsLoop 尝试将预先计算的观察者响应写入被阻塞的观察者通道
+func (s *watchableStore) syncVictimsLoop() {
+	defer s.wg.Done()
+
+	for {
+		// 尝试更新所有受害者观察者
+		for s.moveVictims() != 0 {
+			// 持续更新，直到所有受害者观察者都处理完毕
+		}
+
+		// 检查是否有受害者观察者
+		s.mu.RLock()
+		isEmpty := len(s.victims) == 0
+		s.mu.RUnlock()
+
+		var tickc &lt;-chan time.Time
+		if !isEmpty {
+			tickc = time.After(10 * time.Millisecond)
+		}
+
+		// 等待10毫秒或收到新的受害者通知或停止信号
+		select {
+		case &lt;-tickc:
+		case &lt;-s.victimc:
+		case &lt;-s.stopc:
+			return
+		}
+	}
+}
+
+// moveVictims 尝试使用已存在的事件数据更新观察者
+func (s *watchableStore) moveVictims() (moved int) {
+	s.mu.Lock()
+	victims := s.victims
+	s.victims = nil
+	s.mu.Unlock()
+
+	var newVictim watcherBatch
+	for _, wb := range victims {
+		// 再次尝试发送响应
+		for w, eb := range wb {
+			// 观察者已观察到存储，直到但不包括 w.minRev
+			rev := w.minRev - 1
+			if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
+				pendingEventsGauge.Add(float64(len(eb.evs)))
+			} else {
+				if newVictim == nil {
+					newVictim = make(watcherBatch)
+				}
+				newVictim[w] = eb
+				continue
+			}
+			moved++
+		}
+
+		// 将完成的受害者观察者分配到未同步/同步组
+		s.mu.Lock()
+		s.store.revMu.RLock()
+		curRev := s.store.currentRev
+		for w, eb := range wb {
+			if newVictim != nil &amp;&amp; newVictim[w] != nil {
+				// 无法发送watch响应，仍然是受害者
+				continue
+			}
+			w.victim = false
+			if eb.moreRev != 0 {
+				w.minRev = eb.moreRev
+			}
+			if w.minRev &lt;= curRev {
+				s.unsynced.add(w)
+			} else {
+				slowWatcherGauge.Dec()
+				s.synced.add(w)
+			}
+		}
+		s.store.revMu.RUnlock()
+		s.mu.Unlock()
+	}
+
+	// 如果仍然有未处理的受害者，重新添加到受害者列表中
+	if len(newVictim) &gt; 0 {
+		s.mu.Lock()
+		s.victims = append(s.victims, newVictim)
+		s.mu.Unlock()
+	}
+
+	return moved
+}
+</code></pre><h2 id=reference>Reference</h2><ul><li><a href=https://blog.csdn.net/qq_24433609/article/details/120653747 target=_blank>https://blog.csdn.net/qq_24433609/article/details/120653747</a></li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#介绍>介绍</a></li><li><a href=#watch-的-api>watch 的 api</a></li><li><a href=#api-实现>api 实现</a><ul><li><a href=#sendloop>sendLoop</a></li><li><a href=#recvloop>recvLoop</a></li></ul></li><li><a href=#watchstream>WatchStream</a></li><li><a href=#watchable>watchable</a><ul><li><a href=#newwatchablestore>newWatchableStore</a></li><li><a href=#syncwatchersloop>syncWatchersLoop</a></li><li><a href=#syncvictimsloop>syncVictimsLoop</a></li></ul></li><li><a href=#reference>Reference</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#介绍>介绍</a></li><li><a href=#watch-的-api>watch 的 api</a></li><li><a href=#api-实现>api 实现</a><ul><li><a href=#sendloop>sendLoop</a></li><li><a href=#recvloop>recvLoop</a></li></ul></li><li><a href=#watchstream>WatchStream</a></li><li><a href=#watchable>watchable</a><ul><li><a href=#newwatchablestore>newWatchableStore</a></li><li><a href=#syncwatchersloop>syncWatchersLoop</a></li><li><a href=#syncvictimsloop>syncVictimsLoop</a></li></ul></li><li><a href=#reference>Reference</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

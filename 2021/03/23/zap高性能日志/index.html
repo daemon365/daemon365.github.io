@@ -1,0 +1,353 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>zap高性能日志 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="go,zap"><meta property="og:title" content="zap高性能日志"><meta name=twitter:title content="zap高性能日志"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2021/03/23/zap%E9%AB%98%E6%80%A7%E8%83%BD%E6%97%A5%E5%BF%97/"><meta property="og:description" content="摘要 日志在整个工程实践中的重要性不言而喻，在选择日志组件的时候也有多方面的考量。详细、正确和及时的反馈是必不可少的，但是整个性能表现是否也是必要考虑的点呢？在长期的实践中发现有的日志组件对于计算资源的"><meta name=twitter:description content="摘要 日志在整个工程实践中的重要性不言而喻，在选择日志组件的时候也有多方面的考量。详细、正确和及时的反馈是必不可少的，但是整个性能表现是否也是必要考虑的点呢？在长期的实践中发现有的日志组件对于计算资源的"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2021-03-23T00:00:00+08:00"><meta property="article:modified_time" content="2021-03-23T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/03/23/zap%E9%AB%98%E6%80%A7%E8%83%BD%E6%97%A5%E5%BF%97/>zap高性能日志</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-03-23</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;3619 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/zap>zap</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=摘要>摘要</h2><p>日志在整个工程实践中的重要性不言而喻，在选择日志组件的时候也有多方面的考量。详细、正确和及时的反馈是必不可少的，但是整个性能表现是否也是必要考虑的点呢？在长期的实践中发现有的日志组件对于计算资源的消耗十分巨大，这将导致整个服务成本的居高不下。此文从设计原理深度分析了 zap 的设计与实现上的权衡，也希望整个的选择、考量的过程能给其他的技术团队在开发高性能的 Go 组件时带来一定的借鉴意义。</p><h2 id=前言>前言</h2><p>日志作为整个代码行为的记录，是程序执行逻辑和异常最直接的反馈。对于整个系统来说，日志是至关重要的组成部分。通过分析日志我们不仅可以发现系统的问题，同时日志中也蕴含了大量有价值可以被挖掘的信息，因此合理地记录日志是十分必要的。</p><p>我们的业务通常会记录大量的 Debug 日志，但在实际测试过程中，发现我们使用的日志库 seelog 性能存在严重的瓶颈，在我们的对比结果中发现：zap 表现非常突出，单线程 Qps 也是 logrus、seelog 的数倍。</p><p>在分析源码后 zap 设计与实现上的考量让我感到受益颇多，在这里我们主要分享一下以下几个方面：</p><ol><li>zap 为何有这么高的性能</li><li>对于我们自己的开发有什么值得借鉴的地方</li><li>如何正确的使用 Go 开发高性能的组件</li></ol><h2 id=为什么选择使用zap>为什么选择使用ZAP</h2><ul><li>它同时提供了结构化日志记录和printf风格的日志记录</li><li>它非常的快</li></ul><p>根据Uber-go Zap的文档，它的性能比类似的结构化日志包更好——也比标准库更快。 以下是Zap发布的基准测试信息</p><p>记录一条消息和10个字段:</p><table><thead><tr><th style=text-align:center>Package</th><th style=text-align:center>Time</th><th style=text-align:center>Time % to zap</th><th style=text-align:center>Objects Allocated</th></tr></thead><tbody><tr><td style=text-align:center>⚡️ zap</td><td style=text-align:center>862 ns/op</td><td style=text-align:center>+0%</td><td style=text-align:center>5 allocs/op</td></tr><tr><td style=text-align:center>⚡️ zap (sugared)</td><td style=text-align:center>1250 ns/op</td><td style=text-align:center>+45%</td><td style=text-align:center>11 allocs/op</td></tr><tr><td style=text-align:center>zerolog</td><td style=text-align:center>4021 ns/op</td><td style=text-align:center>+366%</td><td style=text-align:center>76 allocs/op</td></tr><tr><td style=text-align:center>go-kit</td><td style=text-align:center>4542 ns/op</td><td style=text-align:center>+427%</td><td style=text-align:center>105 allocs/op</td></tr><tr><td style=text-align:center>apex/log</td><td style=text-align:center>26785 ns/op</td><td style=text-align:center>+3007%</td><td style=text-align:center>115 allocs/op</td></tr><tr><td style=text-align:center>logrus</td><td style=text-align:center>29501 ns/op</td><td style=text-align:center>+3322%</td><td style=text-align:center>125 allocs/op</td></tr><tr><td style=text-align:center>log15</td><td style=text-align:center>29906 ns/op</td><td style=text-align:center>+3369%</td><td style=text-align:center>122 allocs/op</td></tr></tbody></table><p>记录一个静态字符串，没有任何上下文或printf风格的模板：</p><table><thead><tr><th style=text-align:center>Package</th><th style=text-align:center>Time</th><th style=text-align:center>Time % to zap</th><th style=text-align:center>Objects Allocated</th></tr></thead><tbody><tr><td style=text-align:center>⚡️ zap</td><td style=text-align:center>118 ns/op</td><td style=text-align:center>+0%</td><td style=text-align:center>0 allocs/op</td></tr><tr><td style=text-align:center>⚡️ zap (sugared)</td><td style=text-align:center>191 ns/op</td><td style=text-align:center>+62%</td><td style=text-align:center>2 allocs/op</td></tr><tr><td style=text-align:center>zerolog</td><td style=text-align:center>93 ns/op</td><td style=text-align:center>-21%</td><td style=text-align:center>0 allocs/op</td></tr><tr><td style=text-align:center>go-kit</td><td style=text-align:center>280 ns/op</td><td style=text-align:center>+137%</td><td style=text-align:center>11 allocs/op</td></tr><tr><td style=text-align:center>standard library</td><td style=text-align:center>499 ns/op</td><td style=text-align:center>+323%</td><td style=text-align:center>2 allocs/op</td></tr><tr><td style=text-align:center>apex/log</td><td style=text-align:center>1990 ns/op</td><td style=text-align:center>+1586%</td><td style=text-align:center>10 allocs/op</td></tr><tr><td style=text-align:center>logrus</td><td style=text-align:center>3129 ns/op</td><td style=text-align:center>+2552%</td><td style=text-align:center>24 allocs/op</td></tr><tr><td style=text-align:center>log15</td><td style=text-align:center>3887 ns/op</td><td style=text-align:center>+3194%</td><td style=text-align:center>23 allocs/op</td></tr></tbody></table><h2 id=安装>安装</h2><pre><code class=language-bash>go get -u go.uber.org/zap
+</code></pre><h2 id=示例>示例</h2><h3 id=简单示例>简单示例</h3><h4 id=格式化输出>格式化输出</h4><pre><code class=language-go>package main
+import (
+    &quot;go.uber.org/zap&quot;
+    &quot;time&quot;
+)
+func main() {
+    // zap.NewDevelopment 格式化输出
+    logger, _ := zap.ewDevelopment()
+    defer logger.Sync()
+    logger.Info(&quot;无法获取网址&quot;,
+        zap.String(&quot;url&quot;, &quot;http://www.baidu.com&quot;),
+        zap.Int(&quot;attempt&quot;, 3),
+        zap.Duration(&quot;backoff&quot;, time.Second),
+    )
+}
+</code></pre><p>格式化输出打印结果：</p><pre><code class=language-go>2019-01-02T15:01:13.923+0800    INFO    spikeProxy/main.go:17   failed to fetch URL {&quot;url&quot;: &quot;http://www.baidu.com&quot;, &quot;attempt&quot;: 3, &quot;backoff&quot;: &quot;1s&quot;}
+</code></pre><h4 id=json-序列化输出>json 序列化输出</h4><pre><code class=language-go>package main
+import (
+    &quot;go.uber.org/zap&quot;
+    &quot;time&quot;
+)
+func main() {
+   // zap.NewProduction json序列化输出
+    logger, _ := zap.NewProduction()
+    defer logger.Sync()
+    logger.Info(&quot;无法获取网址&quot;,
+        zap.String(&quot;url&quot;, &quot;http://www.baidu.com&quot;),
+        zap.Int(&quot;attempt&quot;, 3),
+        zap.Duration(&quot;backoff&quot;, time.Second),
+    )
+}
+</code></pre><p>json序列化输出打印结果：</p><pre><code class=language-go>{&quot;level&quot;:&quot;info&quot;,&quot;ts&quot;:1546413239.1466308,&quot;caller&quot;:&quot;spikeProxy/main.go:16&quot;,&quot;msg&quot;:&quot;无法获取网址&quot;,&quot;url&quot;:&quot;http://www.baidu.com&quot;,&quot;attempt&quot;:3,&quot;backoff&quot;:1}
+</code></pre><h3 id=自定义示例>自定义示例</h3><p>选择一个日志库除了高性能是考量的一个标准，高扩展也非常重要，例如：json key 自定义、时间格式化、日志级别等。</p><pre><code class=language-go>package main
+import (
+    &quot;go.uber.org/zap&quot;
+    &quot;go.uber.org/zap/zapcore&quot;
+    &quot;fmt&quot;
+    &quot;time&quot;
+)
+func main() {
+    encoderConfig := zapcore.EncoderConfig{
+        TimeKey:        &quot;time&quot;,
+        LevelKey:       &quot;level&quot;,
+        NameKey:        &quot;logger&quot;,
+        CallerKey:      &quot;caller&quot;,
+        MessageKey:     &quot;msg&quot;,
+        StacktraceKey:  &quot;stacktrace&quot;,
+        LineEnding:     zapcore.DefaultLineEnding,
+        EncodeLevel:    zapcore.LowercaseLevelEncoder,  // 小写编码器
+        EncodeTime:     zapcore.ISO8601TimeEncoder,     // ISO8601 UTC 时间格式
+        EncodeDuration: zapcore.SecondsDurationEncoder,
+        EncodeCaller:   zapcore.FullCallerEncoder,      // 全路径编码器
+    }
+    // 设置日志级别
+    atom := zap.NewAtomicLevelAt(zap.DebugLevel)
+    config := zap.Config{
+        Level:            atom,                                                // 日志级别
+        Development:      true,                                                // 开发模式，堆栈跟踪
+        Encoding:         &quot;json&quot;,                                              // 输出格式 console 或 json
+        EncoderConfig:    encoderConfig,                                       // 编码器配置
+        InitialFields:    map[string]interface{}{&quot;serviceName&quot;: &quot;spikeProxy&quot;}, // 初始化字段，如：添加一个服务器名称
+        OutputPaths:      []string{&quot;stdout&quot;, &quot;./logs/spikeProxy.log&quot;},         // 输出到指定文件 stdout（标准输出，正常颜色） stderr（错误输出，红色）
+        ErrorOutputPaths: []string{&quot;stderr&quot;},
+    }
+    // 构建日志
+    logger, err := config.Build()
+    if err != nil {
+        panic(fmt.Sprintf(&quot;log 初始化失败: %v&quot;, err))
+    }
+    logger.Info(&quot;log 初始化成功&quot;)
+    logger.Info(&quot;无法获取网址&quot;,
+        zap.String(&quot;url&quot;, &quot;http://www.baidu.com&quot;),
+        zap.Int(&quot;attempt&quot;, 3),
+        zap.Duration(&quot;backoff&quot;, time.Second),
+    )
+}
+</code></pre><p>打印结果：</p><pre><code class=language-go>{&quot;level&quot;:&quot;info&quot;,&quot;time&quot;:&quot;2019-01-02T15:38:33.778+0800&quot;,&quot;caller&quot;:&quot;/Users/lcl/go/src/spikeProxy/main.go:54&quot;,&quot;msg&quot;:&quot;log 初始化成功&quot;,&quot;serviceName&quot;:&quot;spikeProxy&quot;}
+{&quot;level&quot;:&quot;info&quot;,&quot;time&quot;:&quot;2019-01-02T15:38:33.778+0800&quot;,&quot;caller&quot;:&quot;/Users/lcl/go/src/spikeProxy/main.go:56&quot;,&quot;msg&quot;:&quot;无法获取网址&quot;,&quot;serviceName&quot;:&quot;spikeProxy&quot;,&quot;url&quot;:&quot;http://www.baidu.com&quot;,&quot;attempt&quot;:3,&quot;backoff&quot;:1}
+</code></pre><h2 id=写入归档文件示例>写入归档文件示例</h2><h2 id=安装-lumberjack>安装 lumberjack</h2><pre><code class=language-go>go get gopkg.in/natefinch/lumberjack.v2
+</code></pre><h2 id=lumberjack介绍>lumberjack介绍</h2><p>Lumberjack是一个Go包，用于将日志写入滚动文件。
+zap 不支持文件归档，如果要支持文件按大小或者时间归档，需要使用lumberjack，lumberjack也是<a href=https://github.com/uber-go/zap/blob/master/FAQ.md target=_blank>zap官方推荐</a>的。</p><h2 id=示例-1>示例</h2><pre><code class=language-go>package main
+import (
+    &quot;go.uber.org/zap&quot;
+    &quot;go.uber.org/zap/zapcore&quot;
+    &quot;time&quot;
+    &quot;gopkg.in/natefinch/lumberjack.v2&quot;
+    &quot;os&quot;
+)
+func main() {
+    hook := lumberjack.Logger{
+        Filename:   &quot;./logs/spikeProxy1.log&quot;, // 日志文件路径
+        MaxSize:    128,                      // 每个日志文件保存的最大尺寸 单位：M
+        MaxBackups: 30,                       // 日志文件最多保存多少个备份
+        MaxAge:     7,                        // 文件最多保存多少天
+        Compress:   true,                     // 是否压缩
+    }
+    encoderConfig := zapcore.EncoderConfig{
+        TimeKey:        &quot;time&quot;,
+        LevelKey:       &quot;level&quot;,
+        NameKey:        &quot;logger&quot;,
+        CallerKey:      &quot;linenum&quot;,
+        MessageKey:     &quot;msg&quot;,
+        StacktraceKey:  &quot;stacktrace&quot;,
+        LineEnding:     zapcore.DefaultLineEnding,
+        EncodeLevel:    zapcore.LowercaseLevelEncoder,  // 小写编码器
+        EncodeTime:     zapcore.ISO8601TimeEncoder,     // ISO8601 UTC 时间格式
+        EncodeDuration: zapcore.SecondsDurationEncoder, //
+        EncodeCaller:   zapcore.FullCallerEncoder,      // 全路径编码器
+        EncodeName:     zapcore.FullNameEncoder,
+    }
+    // 设置日志级别
+    atomicLevel := zap.NewAtomicLevel()
+    atomicLevel.SetLevel(zap.InfoLevel)
+    core := zapcore.NewCore(
+        zapcore.NewJSONEncoder(encoderConfig),                                           // 编码器配置
+        zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&amp;hook)), // 打印到控制台和文件
+        atomicLevel,                                                                     // 日志级别
+    )
+    // 开启开发模式，堆栈跟踪
+    caller := zap.AddCaller()
+    // 开启文件及行号
+    development := zap.Development()
+    // 设置初始化字段
+    filed := zap.Fields(zap.String(&quot;serviceName&quot;, &quot;serviceName&quot;))
+    // 构造日志
+    logger := zap.New(core, caller, development, filed)
+    logger.Info(&quot;log 初始化成功&quot;)
+    logger.Info(&quot;无法获取网址&quot;,
+        zap.String(&quot;url&quot;, &quot;http://www.baidu.com&quot;),
+        zap.Int(&quot;attempt&quot;, 3),
+        zap.Duration(&quot;backoff&quot;, time.Second))
+}
+</code></pre><p>控制台打印结果：</p><pre><code class=language-go>{&quot;level&quot;:&quot;info&quot;,&quot;time&quot;:&quot;2019-01-02T16:14:43.608+0800&quot;,&quot;linenum&quot;:&quot;/Users/lcl/go/src/spikeProxy/main.go:56&quot;,&quot;msg&quot;:&quot;log 初始化成功&quot;,&quot;serviceName&quot;:&quot;serviceName&quot;}
+{&quot;level&quot;:&quot;info&quot;,&quot;time&quot;:&quot;2019-01-02T16:14:43.608+0800&quot;,&quot;linenum&quot;:&quot;/Users/lcl/go/src/spikeProxy/main.go:57&quot;,&quot;msg&quot;:&quot;无法获取网址&quot;,&quot;serviceName&quot;:&quot;serviceName&quot;,&quot;url&quot;:&quot;http://www.baidu.com&quot;,&quot;attempt&quot;:3,&quot;backoff&quot;:1}
+</code></pre><p>文件打印结果：</p><pre><code class=language-go>{&quot;level&quot;:&quot;info&quot;,&quot;time&quot;:&quot;2019-01-02T16:14:43.608+0800&quot;,&quot;linenum&quot;:&quot;/Users/lcl/go/src/spikeProxy/main.go:56&quot;,&quot;msg&quot;:&quot;log 初始化成功&quot;,&quot;serviceName&quot;:&quot;serviceName&quot;}
+{&quot;level&quot;:&quot;info&quot;,&quot;time&quot;:&quot;2019-01-02T16:14:43.608+0800&quot;,&quot;linenum&quot;:&quot;/Users/lcl/go/src/spikeProxy/main.go:57&quot;,&quot;msg&quot;:&quot;无法获取网址&quot;,&quot;serviceName&quot;:&quot;serviceName&quot;,&quot;url&quot;:&quot;http://www.baidu.com&quot;,&quot;attempt&quot;:3,&quot;backoff&quot;:1}
+</code></pre><h2 id=gin框架使用zaplumberjack>gin框架使用zap+lumberjack</h2><h3 id=初始化zaplumberjack>初始化zap,lumberjack</h3><pre><code class=language-go>// viperconfig
+type Log struct {
+	FileName   string `yaml:&quot;filename&quot;`
+	MaxSize    int    `yaml:&quot;maxsize&quot;`
+	MaxBackups int    `yaml:&quot;maxbackups&quot;`
+	MaxAges    int    `yaml:&quot;maxages&quot;`
+	Compress   bool   `yaml:&quot;compress&quot;`
+	Level      string `yaml:&quot;-&quot;`
+}
+</code></pre><pre><code class=language-go>// init
+var ZapLog *zap.Logger
+// InitLogger 初始化Logger
+func InitLogger(cfg *viperConfig.Log) (err error) {
+	writeSyncer := getLogWriter(cfg.FileName, cfg.MaxSize, cfg.MaxBackups, cfg.MaxAges)
+	encoder := getEncoder()
+	var l = new(zapcore.Level)
+	err = l.UnmarshalText([]byte(cfg.Level))
+	if err != nil {
+		return
+	}
+	core := zapcore.NewCore(encoder, writeSyncer, l)
+	ZapLog = zap.New(core, zap.AddCaller())
+	zap.ReplaceGlobals(ZapLog) // 替换zap包中全局的logger实例，后续在其他包中只需使用zap.L()调用即可
+	return
+}
+func getEncoder() zapcore.Encoder {
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.TimeKey = &quot;time&quot;
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	encoderConfig.EncodeDuration = zapcore.SecondsDurationEncoder
+	encoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+	return zapcore.NewJSONEncoder(encoderConfig)
+}
+func getLogWriter(filename string, maxSize, maxBackup, maxAge int) zapcore.WriteSyncer {
+	lumberJackLogger := &amp;lumberjack.Logger{
+		Filename:   filename,
+		MaxSize:    maxSize,
+		MaxBackups: maxBackup,
+		MaxAge:     maxAge,
+	}
+	return zapcore.AddSync(lumberJackLogger)
+}
+</code></pre><h3 id=gin日志中间件>gin日志中间件</h3><p>模仿Logger()和Recovery()的实现，使用我们的日志库来接收gin框架默认输出的日志。</p><pre><code class=language-go>// GinLogger 接收gin框架默认的日志
+func GinLogger(logger *zap.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+		c.Next()
+		cost := time.S***art)
+		logger.Info(path,
+			zap.Int(&quot;status&quot;, c.Writer.Status()),
+			zap.String(&quot;method&quot;, c.Request.Method),
+			zap.String(&quot;path&quot;, path),
+			zap.String(&quot;query&quot;, query),
+			zap.String(&quot;ip&quot;, c.ClientIP()),
+			zap.String(&quot;user-agent&quot;, c.Request.UserAgent()),
+			zap.String(&quot;errors&quot;, c.Errors.ByType(gin.ErrorTypePrivate).String()),
+			zap.Duration(&quot;cost&quot;, cost),
+		)
+	}
+}
+// GinRecovery recover掉项目可能出现的panic
+func GinRecovery(logger *zap.Logger, stack bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				// Check for a broken connection, as it is not really a
+				// condition that warrants a panic stack trace.
+				var brokenPipe bool
+				if ne, ok := err.(*net.OpError); ok {
+					if se, ok := ne.Err.(*os.SyscallError); ok {
+						if strings.Contains(strings.ToLower(se.Error()), &quot;broken pipe&quot;) || strings.Contains(strings.ToLower(se.Error()), &quot;connection reset by peer&quot;) {
+							brokenPipe = true
+						}
+					}
+				}
+				httpRequest, _ := httputil.DumpRequest(c.Request, false)
+				if brokenPipe {
+					logger.Error(c.Request.URL.Path,
+						zap.Any(&quot;error&quot;, err),
+						zap.String(&quot;request&quot;, string(httpRequest)),
+					)
+					// If the connection is dead, we can't write a status to it.
+					c.Error(err.(error)) // nolint: errcheck
+					c.Abort()
+					return
+				}
+				if stack {
+					logger.Error(&quot;[Recovery from panic]&quot;,
+						zap.Any(&quot;error&quot;, err),
+						zap.String(&quot;request&quot;, string(httpRequest)),
+						zap.String(&quot;stack&quot;, string(debug.Stack())),
+					)
+				} else {
+					logger.Error(&quot;[Recovery from panic]&quot;,
+						zap.Any(&quot;error&quot;, err),
+						zap.String(&quot;request&quot;, string(httpRequest)),
+					)
+				}
+				c.AbortWithStatus(http.StatusInternalServerError)
+			}
+		}()
+		c.Next()
+	}
+}
+</code></pre><p>使用</p><pre><code class=language-go>// 全局中间件
+func InitMiddleWares(eng *gin.Engine) {
+	eng.Use(GinLogger(log.ZapLog), GinRecovery(log.ZapLog, true))
+}
+</code></pre><p>参考文章:</p><ul><li><a href=https://mp.weixin.qq.com/s/i0bMh_gLLrdnhAEWlF-xDw target=_blank>https://mp.weixin.qq.com/s/i0bMh_gLLrdnhAEWlF-xDw</a></li><li><a href=https://studygolang.com/articles/17394 target=_blank>https://studygolang.com/articles/17394</a></li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#摘要>摘要</a></li><li><a href=#前言>前言</a></li><li><a href=#为什么选择使用zap>为什么选择使用ZAP</a></li><li><a href=#安装>安装</a></li><li><a href=#示例>示例</a><ul><li><a href=#简单示例>简单示例</a></li><li><a href=#自定义示例>自定义示例</a></li></ul></li><li><a href=#写入归档文件示例>写入归档文件示例</a></li><li><a href=#安装-lumberjack>安装 lumberjack</a></li><li><a href=#lumberjack介绍>lumberjack介绍</a></li><li><a href=#示例-1>示例</a></li><li><a href=#gin框架使用zaplumberjack>gin框架使用zap+lumberjack</a><ul><li><a href=#初始化zaplumberjack>初始化zap,lumberjack</a></li><li><a href=#gin日志中间件>gin日志中间件</a></li></ul></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#摘要>摘要</a></li><li><a href=#前言>前言</a></li><li><a href=#为什么选择使用zap>为什么选择使用ZAP</a></li><li><a href=#安装>安装</a></li><li><a href=#示例>示例</a><ul><li><a href=#简单示例>简单示例</a></li><li><a href=#自定义示例>自定义示例</a></li></ul></li><li><a href=#写入归档文件示例>写入归档文件示例</a></li><li><a href=#安装-lumberjack>安装 lumberjack</a></li><li><a href=#lumberjack介绍>lumberjack介绍</a></li><li><a href=#示例-1>示例</a></li><li><a href=#gin框架使用zaplumberjack>gin框架使用zap+lumberjack</a><ul><li><a href=#初始化zaplumberjack>初始化zap,lumberjack</a></li><li><a href=#gin日志中间件>gin日志中间件</a></li></ul></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

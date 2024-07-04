@@ -1,0 +1,295 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>kubernetes集群最新版安装 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="kubernetes"><meta property="og:title" content="kubernetes集群最新版安装"><meta name=twitter:title content="kubernetes集群最新版安装"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2022/09/22/kubernetes%E9%9B%86%E7%BE%A4%E6%9C%80%E6%96%B0%E7%89%88%E5%AE%89%E8%A3%85/"><meta property="og:description" content="原文地址：https://haiyux.cc/2022/09/21/k8s-install/ 虚拟机准备 我这里准备了三台虚拟机，分别部署一个master和两个node，操作系统位ubuntu 20.04。"><meta name=twitter:description content="原文地址：https://haiyux.cc/2022/09/21/k8s-install/ 虚拟机准备 我这里准备了三台虚拟机，分别部署一个master和两个node，操作系统位ubuntu 20.04。"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2022-09-22T00:00:00+08:00"><meta property="article:modified_time" content="2022-09-22T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2022/09/22/kubernetes%E9%9B%86%E7%BE%A4%E6%9C%80%E6%96%B0%E7%89%88%E5%AE%89%E8%A3%85/>kubernetes集群最新版安装</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2022-09-22</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1902 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=原文地址httpshaiyuxcc20220921k8s-install>原文地址：https://haiyux.cc/2022/09/21/k8s-install/</h2><h2 id=虚拟机准备>虚拟机准备</h2><p>我这里准备了三台虚拟机，分别部署一个master和两个node，操作系统位ubuntu 20.04。<strong>以下为特殊说明为三台机器都要做此操作</strong></p><h2 id=安装容器runtime>安装容器runtime</h2><p>之前，我们用的容器runtime基本都是docker，但是docker并没有实现k8s的CRI，是在kubelet的有一个组件叫docker-shim做转化，在kubernetes v1.24版本以上这个组件已经废弃，这里选择containerd做容器runtime。当然，containerd是可以使用docker的镜像的。如果非要使用docker的话，被kubernetes废弃的docker-shim被docker自己维护起来了，可以试试看。但是不建议纯纯的浪费资源。</p><h3 id=安装>安装</h3><pre><code class=language-bash>apt install -y containerd
+</code></pre><p><strong>生成默认配置</strong></p><pre><code class=language-bash>mkdir /etc/containerd
+containerd config default &gt; /etc/containerd/config.toml
+</code></pre><p><strong>配置<code>systemd cgroup</code>驱动程序</strong></p><pre><code class=language-bash>sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+</code></pre><p><strong>设置代理和修改pause镜像</strong></p><p>重所周知的原因</p><ul><li>镜像加速</li></ul><p>我这里用的网易docker源 你也可以用别的 阿里源等</p><blockquote><p>限免的的 <code>https://xxxxx.mirror.aliyuncs.com</code> 是阿里云加速，xxxx是我屏蔽字段</p><p><a href=https://cr.console.aliyun.com/cn-hangzhou/instances/mirrors target=_blank>https://cr.console.aliyun.com/cn-hangzhou/instances/mirrors</a> 可以自啊这个地址申请自己的</p></blockquote><pre><code class=language-bash>sed -i 's|config_path = &quot;&quot;|config_path = &quot;/etc/containerd/certs.d/&quot;|g' /etc/containerd/config.toml
+
+mkdir -p /etc/containerd/certs.d/docker.io
+mkdir -p /etc/containerd/certs.d/docker.io
+cat &gt;/etc/containerd/certs.d/docker.io/hosts.toml &lt;&lt;EOF
+server = &quot;https://docker.io&quot;
+[host.&quot;https://xxxxx.mirror.aliyuncs.com&quot;]
+  capabilities = [&quot;pull&quot;,&quot;resolve&quot;]
+[host.&quot;https://docker.mirrors.ustc.edu.cn&quot;]
+  capabilities = [&quot;pull&quot;,&quot;resolve&quot;]
+[host.&quot;https://registry-1.docker.io&quot;]
+  capabilities = [&quot;pull&quot;,&quot;resolve&quot;,&quot;push&quot;]
+EOF
+</code></pre><ul><li>把sandbox_image 修改成阿里云镜像版本自己看着办 不然kube-apiserver可能起不来</li></ul><pre><code class=language-bash>vim /etc/containerd/config.toml
+sandbox_image = &quot;registry.aliyuncs.com/google_containers/pause:3.8&quot;
+</code></pre><p><strong>启动</strong></p><pre><code class=language-bash>systemctl daemon-reload
+systemctl enable containerd
+systemctl start containerd
+</code></pre><h3 id=测试>测试</h3><p>这里使用 <code>nerdctl</code>工具测试</p><p><code>nerdctl</code> 是 containerd 房官方提供的加强版命令行工具 <a href=https://github.com/containerd/nerdctl target=_blank>https://github.com/containerd/nerdctl</a></p><p>下载方式</p><pre><code class=language-bash>wget https://ghproxy.com/https://github.com/containerd/nerdctl/releases/download/v0.23.0/nerdctl-0.23.0-linux-amd64.tar.gz
+
+tar xzvf nerdctl-0.23.0-linux-amd64.tar.gz -C /usr/local/bin
+</code></pre><pre><code>nerdctl --debug pull busybox
+
+DEBU[0000] verification process skipped                 
+DEBU[0000] Found hosts dir &quot;/etc/containerd/certs.d&quot;    
+DEBU[0000] Ignoring hosts dir &quot;/etc/docker/certs.d&quot;      error=&quot;stat /etc/docker/certs.d: no such file or directory&quot;
+DEBU[0000] The image will be unpacked for platform {&quot;amd64&quot; &quot;linux&quot; &quot;&quot; [] &quot;&quot;}, snapshotter &quot;overlayfs&quot;. 
+DEBU[0000] fetching                                      image=&quot;docker.io/library/busybox:latest&quot;
+DEBU[0000] loading host directory                        dir=/etc/containerd/certs.d/docker.io
+DEBU[0000] resolving                                     host=hub-mirror.c.163.com
+DEBU[0000] do request                                    host=hub-mirror.c.163.com request.header.accept=&quot;application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, */*&quot; request.header.user-agent=containerd/1.6.0+unknown request.method=HEAD url=&quot;http://hub-mirror.c.163.com/v2/library/busybox/manifests/latest?ns=docker.io&quot;
+</code></pre><p>看到 host=hub-mirror.c.163.com 代表配置成功</p><h2 id=其他准备工作>其他准备工作</h2><h3 id=防火墙>防火墙</h3><pre><code class=language-bash># 查看状态
+ufw status
+# 如果打开着呢 请关闭
+ufw disable
+</code></pre><h3 id=时间同步>时间同步</h3><pre><code class=language-bash>apt install -y ntpdate
+ntpdate time.windows.com
+</code></pre><h3 id=关闭swap分区>关闭swap分区</h3><pre><code># 永久生效 需要重启
+sed -ri 's/.*swap.*/#&amp;/' /etc/fstab
+# 临时关闭，重启后无效
+swapoff -a
+</code></pre><h3 id=将桥接的ipv4流量传递到iptables的链>将桥接的IPv4流量传递到iptables的链</h3><ol><li>在每个节点上将桥接的IPv4流量传递到iptables的链</li></ol><pre><code class=language-bash>cat &gt; /etc/sysctl.d/k8s.conf &lt;&lt; EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+vm.swappiness = 0
+EOF
+</code></pre><pre><code class=language-bash># 加载br_netfilter模块
+modprobe br_netfilter
+# 查看是否加载
+lsmod | grep br_netfilter
+# 生效
+sysctl --system
+
+echo 1 &gt; /proc/sys/net/bridge/bridge-nf-call-iptables
+echo 1 &gt; /proc/sys/net/ipv4/ip_forward
+echo 1 &gt; /proc/sys/net/bridge/bridge-nf-call-iptables
+</code></pre><h3 id=开启ipvs>开启ipvs</h3><p>在kubernetes中service有两种代理模型，一种是基于iptables，另一种是基于ipvs的。ipvs的性能要高于iptables的，但是如果要使用它，需要手动载入ipvs模块。</p><pre><code class=language-bash>apt install -y  ipset ipvsadm
+
+mkdir -p /etc/sysconfig/modules
+cat &gt; /etc/sysconfig/modules/ipvs.modules &lt;&lt;EOF
+#!/bin/bash
+modprobe -- ip_vs
+modprobe -- ip_vs_rr
+modprobe -- ip_vs_wrr
+modprobe -- ip_vs_sh
+modprobe -- nf_conntrack
+EOF
+</code></pre><p><strong>授权、运行、检查是否加载</strong></p><pre><code>chmod 755 /etc/sysconfig/modules/ipvs.modules &amp;&amp; bash /etc/sysconfig/modules/ipvs.modules &amp;&amp; lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+</code></pre><p><strong>检查是否加载</strong></p><pre><code>lsmod | grep -e ipvs -e nf_conntrack
+
+sysctl --system
+</code></pre><h3 id=设置主机名>设置主机名</h3><p><strong>设置主机名</strong></p><pre><code>hostnamectl set-hostname &lt;hostname&gt;
+</code></pre><p><strong>三台机器分别为</strong></p><pre><code># 192.168.56.100
+hostnamectl set-hostname k8s-master
+
+# 192.168.56.101
+hostnamectl set-hostname k8s-node1
+
+# 192.168.56.102
+hostnamectl set-hostname k8s-node2
+</code></pre><h2 id=安装kubeadmkubelet和kubectl>安装kubeadm、kubelet和kubectl</h2><p><strong>安装https工具</strong></p><pre><code class=language-bash>apt install -y apt-transport-https ca-certificates curl
+</code></pre><p><strong>下载阿里云cloud公钥</strong></p><p>为什么下载阿里云的，不去下载 kubernetes 官方的 你懂得</p><pre><code>sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg
+</code></pre><p><strong>添加 Kubernetes <code>apt</code> 仓库</strong></p><pre><code>echo &quot;deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main&quot; | sudo tee /etc/apt/sources.list.d/kubernetes.list
+</code></pre><p><strong>更新 <code>apt</code> 包索引，安装 kubelet、kubeadm 和 kubectl，并锁定其版本：</strong></p><pre><code class=language-shell>apt update
+apt install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
+</code></pre><h2 id=查看k8s所需镜像>查看k8s所需镜像</h2><pre><code>kubeadm config images list
+
+egistry.k8s.io/kube-apiserver:v1.25.2
+registry.k8s.io/kube-controller-manager:v1.25.2
+registry.k8s.io/kube-scheduler:v1.25.2
+registry.k8s.io/kube-proxy:v1.25.2
+registry.k8s.io/pause:3.8
+registry.k8s.io/etcd:3.5.4-0
+registry.k8s.io/coredns/coredns:v1.9.3
+</code></pre><h2 id=初始化只有master执行>初始化（只有master执行）</h2><p>如果带上debug日志可以在后面加 &ndash;v=9</p><pre><code>kubeadm init \
+  --apiserver-advertise-address=192.168.56.100 \
+  --image-repository registry.aliyuncs.com/google_containers \
+  --kubernetes-version v1.25.2 \
+  --service-cidr=10.96.0.0/12 \
+  --pod-network-cidr=10.244.0.0/16
+</code></pre><p>出现这个代表 init 成功</p><pre><code>Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run &quot;kubectl apply -f [podnetwork].yaml&quot; with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.56.100:6443 --token qsmewy.fd3hlnkr6b3tb570 \
+        --discovery-token-ca-cert-hash sha256:08afdf5077a0ee0f72553640e09356f19846d030552c35357d05032f95a14b89
+</code></pre><p>根据提示执行</p><pre><code class=language-bash>mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+</code></pre><p>根据提示在两台node上执行命令 加入集群（<strong>这个写你自己master弹出来的命令</strong>）</p><pre><code>kubeadm join 192.168.56.100:6443 --token qsmewy.fd3hlnkr6b3tb570 \
+        --discovery-token-ca-cert-hash sha256:08afdf5077a0ee0f72553640e09356f19846d030552c35357d05032f95a14b89
+</code></pre><p>出现这个代表节点加入集群成功</p><pre><code>This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+</code></pre><h2 id=部署cni网络插件>部署CNI网络插件</h2><ul><li>kubernetes支持多种网络插件，比如flannel、calico、canal等，任选一种即可，本次选择flannel</li></ul><pre><code class=language-bash>kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+</code></pre><p>这个是网络地址，可能是失败这里提供一个yaml下载，然后 apply，<a href=/files/yaml/kube-flannel.yml>kube-flannel.yml</a></p><h2 id=测试-1>测试</h2><pre><code class=language-bash>kubectl get node
+
+NAME         STATUS   ROLES           AGE   VERSION
+k8s-master   Ready    control-plane   31m   v1.25.2
+k8s-node1    Ready    &lt;none&gt;          31m   v1.25.2
+k8s-node2    Ready    &lt;none&gt;          30m   v1.25.2
+
+kubectl get pod -n kube-system
+
+NAME                                 READY   STATUS    RESTARTS   AGE
+coredns-c676cc86f-chtqm              1/1     Running   0          31m
+coredns-c676cc86f-ph8wl              1/1     Running   0          31m
+etcd-k8s-master                      1/1     Running   1          32m
+kube-apiserver-k8s-master            1/1     Running   1          32m
+kube-controller-manager-k8s-master   1/1     Running   1          32m
+kube-proxy-949st                     1/1     Running   0          31m
+kube-proxy-9zjnb                     1/1     Running   0          31m
+kube-proxy-g98kp                     1/1     Running   0          31m
+kube-scheduler-k8s-master            1/1     Running   1          32m
+
+kubectl get pod -n kube-flannel
+
+NAME                    READY   STATUS    RESTARTS   AGE
+kube-flannel-ds-jk8fp   1/1     Running   0          2m2s
+kube-flannel-ds-pmmcs   1/1     Running   0          2m2s
+kube-flannel-ds-r5j7s   1/1     Running   0          2m2s
+</code></pre><p>创建一个 nginx pod</p><pre><code class=language-bash>kubectl run nginx --image=nginx:1.17.1
+
+kubectl get pod -owide
+NAME    READY   STATUS    RESTARTS   AGE   IP           NODE        NOMINATED NODE   READINESS GATES
+nginx   1/1     Running   0          27s   10.244.1.2   k8s-node1   &lt;none&gt;           &lt;none&gt;
+</code></pre><p>创建一个 service</p><pre><code class=language-yaml># vim nginx-svc.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    run: nginx
+</code></pre><pre><code>kubectl apply -f nginx-svc.yaml
+kubectl get svc
+
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+kubernetes   ClusterIP   10.96.0.1       &lt;none&gt;        443/TCP    43m
+nginx        ClusterIP   10.110.94.194   &lt;none&gt;        8080/TCP   92s
+</code></pre><h2 id=之后加入node>之后加入node</h2><p>master执行</p><pre><code class=language-bash>kubeadm token create --ttl 0 --print-join-command
+</code></pre><p>执行打印出来的命令</p></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#原文地址httpshaiyuxcc20220921k8s-install>原文地址：https://haiyux.cc/2022/09/21/k8s-install/</a></li><li><a href=#虚拟机准备>虚拟机准备</a></li><li><a href=#安装容器runtime>安装容器runtime</a><ul><li><a href=#安装>安装</a></li><li><a href=#测试>测试</a></li></ul></li><li><a href=#其他准备工作>其他准备工作</a><ul><li><a href=#防火墙>防火墙</a></li><li><a href=#时间同步>时间同步</a></li><li><a href=#关闭swap分区>关闭swap分区</a></li><li><a href=#将桥接的ipv4流量传递到iptables的链>将桥接的IPv4流量传递到iptables的链</a></li><li><a href=#开启ipvs>开启ipvs</a></li><li><a href=#设置主机名>设置主机名</a></li></ul></li><li><a href=#安装kubeadmkubelet和kubectl>安装kubeadm、kubelet和kubectl</a></li><li><a href=#查看k8s所需镜像>查看k8s所需镜像</a></li><li><a href=#初始化只有master执行>初始化（只有master执行）</a></li><li><a href=#部署cni网络插件>部署CNI网络插件</a></li><li><a href=#测试-1>测试</a></li><li><a href=#之后加入node>之后加入node</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#原文地址httpshaiyuxcc20220921k8s-install>原文地址：https://haiyux.cc/2022/09/21/k8s-install/</a></li><li><a href=#虚拟机准备>虚拟机准备</a></li><li><a href=#安装容器runtime>安装容器runtime</a><ul><li><a href=#安装>安装</a></li><li><a href=#测试>测试</a></li></ul></li><li><a href=#其他准备工作>其他准备工作</a><ul><li><a href=#防火墙>防火墙</a></li><li><a href=#时间同步>时间同步</a></li><li><a href=#关闭swap分区>关闭swap分区</a></li><li><a href=#将桥接的ipv4流量传递到iptables的链>将桥接的IPv4流量传递到iptables的链</a></li><li><a href=#开启ipvs>开启ipvs</a></li><li><a href=#设置主机名>设置主机名</a></li></ul></li><li><a href=#安装kubeadmkubelet和kubectl>安装kubeadm、kubelet和kubectl</a></li><li><a href=#查看k8s所需镜像>查看k8s所需镜像</a></li><li><a href=#初始化只有master执行>初始化（只有master执行）</a></li><li><a href=#部署cni网络插件>部署CNI网络插件</a></li><li><a href=#测试-1>测试</a></li><li><a href=#之后加入node>之后加入node</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

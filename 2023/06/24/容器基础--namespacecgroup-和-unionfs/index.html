@@ -1,0 +1,266 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>容器基础-- namespace,Cgroup 和 UnionFS - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="docker,containerd,kubernetes,namespace,Cgroup,UnionFS"><meta property="og:title" content="容器基础-- namespace,Cgroup 和 UnionFS"><meta name=twitter:title content="容器基础-- namespace,Cgroup 和 UnionFS"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2023/06/24/%E5%AE%B9%E5%99%A8%E5%9F%BA%E7%A1%80--namespacecgroup-%E5%92%8C-unionfs/"><meta property="og:description" content="Namespace 什么是 Namespace ？ 这里的 &ldquo;namespace&rdquo; 指的是 Linux namespace 技术，它是 Linux 内核实现的一种隔离方案。简而言之，Linux 操作系统能够为不同的进程分配不同的 namespace，每个 namespace 都具有独立的资源分配，从而实现了进程间的隔离。如果你的"><meta name=twitter:description content="Namespace 什么是 Namespace ？ 这里的 &ldquo;namespace&rdquo; 指的是 Linux namespace 技术，它是 Linux 内核实现的一种隔离方案。简而言之，Linux 操作系统能够为不同的进程分配不同的 namespace，每个 namespace 都具有独立的资源分配，从而实现了进程间的隔离。如果你的"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2023-06-24T00:00:00+08:00"><meta property="article:modified_time" content="2023-06-24T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2023/06/24/%E5%AE%B9%E5%99%A8%E5%9F%BA%E7%A1%80--namespacecgroup-%E5%92%8C-unionfs/>容器基础-- namespace,Cgroup 和 UnionFS</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2023-06-24</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;4065 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/docker>docker</a>&nbsp;<a href=/tags/containerd>containerd</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;<a href=/tags/namespace>namespace</a>&nbsp;<a href=/tags/cgroup>Cgroup</a>&nbsp;<a href=/tags/unionfs>UnionFS</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=namespace>Namespace</h2><h3 id=什么是-namespace->什么是 Namespace ？</h3><p>这里的 &ldquo;namespace&rdquo; 指的是 Linux namespace 技术，它是 Linux 内核实现的一种隔离方案。简而言之，Linux 操作系统能够为不同的进程分配不同的 namespace，每个 namespace 都具有独立的资源分配，从而实现了进程间的隔离。如果你的 Linux 安装了 GCC，可以通过运行 <code>man namespaces</code> 命令来查看相关文档，或者你也可以访问<a href=http://man7.org/linux/man-pages/man7/namespaces.7.html target=_blank>在线手册</a>获取更多信息。</p><h3 id=介绍>介绍</h3><p>下图为各种 namespace 的参数，支持的起始内核版本，以及隔离内容。</p><table><thead><tr><th>Namespace</th><th>系统调用参数</th><th>内核版本</th><th>隔离内容</th></tr></thead><tbody><tr><td>UTS (Unix Time-sharing System)</td><td>CLONE_NEWUTS</td><td>Linux 2.4.19</td><td>主机名与域名</td></tr><tr><td>IPC (Inter-Process Communication)</td><td>CLONE_NEWIPC</td><td>Linux 2.6.19</td><td>信号量、消息队列和共享内存</td></tr><tr><td>PID (Process ID)</td><td>CLONE_NEWPID</td><td>Linux 2.6.19</td><td>进程编号</td></tr><tr><td>Network</td><td>CLONE_NEWNET</td><td>Linux 2.6.24</td><td>网络设备、网络栈、端口等等</td></tr><tr><td>Mount</td><td>CLONE_NEWNS</td><td>Linux 2.6.29</td><td>挂载点（文件系统）</td></tr><tr><td>User</td><td>CLONE_NEWUSER</td><td>Linux 3.8</td><td>用户和用户组</td></tr></tbody></table><ol><li>PID Namespace：</li></ol><ul><li>不同用户的进程通过 PID Namespace 进行隔离，并且不同的 Namespace 中可以有相同的进程 ID。在 Docker 中，所有的 LXC（Linux 容器）进程的父进程是 Docker 进程，每个 LXC 进程具有不同的 Namespace。由于支持嵌套 Namespace，因此可以方便地实现 Docker 中的 Docker（Docker in Docker）。</li></ul><ol start=2><li>Net Namespace：</li></ol><ul><li>有了 PID Namespace，每个 Namespace 中的进程能够相互隔离，但是网络端口仍然共享主机的端口。通过 Net Namespace 实现网络隔离，每个 Net Namespace 具有独立的网络设备、IP 地址、IP 路由表和 /proc/net 目录。这样，每个容器的网络就能够得到隔离。Docker 默认使用 veth（虚拟以太网）方式将容器中的虚拟网卡与主机上的 Docker 桥接器（docker0）连接起来。</li></ul><ol start=3><li>IPC Namespace：</li></ol><ul><li>容器中的进程仍然使用常见的 Linux 进程间通信（IPC）方法，包括信号量、消息队列和共享内存。然而，与虚拟机不同的是，容器中的进程实际上是在具有相同 PID Namespace 的主机进程之间进行通信，因此在申请 IPC 资源时需要加入 Namespace 信息，每个 IPC 资源都有一个唯一的 32 位 ID。</li></ul><ol start=4><li>MNT Namespace：</li></ol><ul><li>类似于 chroot，将进程限制在特定的目录下执行。MNT Namespace 允许不同 Namespace 的进程看到不同的文件结构，从而隔离了每个 Namespace 中进程所看到的文件目录。与 chroot 不同的是，每个 Namespace 中的容器在 /proc/mounts 中的信息仅包含所在 Namespace 的挂载点。</li></ul><ol start=5><li>UTS Namespace：</li></ol><ul><li>UTS（&ldquo;UNIX Time-sharing System&rdquo;）Namespace 允许每个容器拥有独立的主机名和域名，使其在网络上可以被视为一个独立的节点，而不仅仅是主机上的一个进程。</li></ul><ol start=6><li>User Namespace：</li></ol><ul><li>每个容器可以具有不同的用户和组 ID，这意味着容器内部的程序可以使用容器内部的用户执行，而不是主机上的用户。</li></ul><p>涉及到三个系统调用（system call）的 API：</p><ol><li><strong>clone()</strong>：用于创建新进程。与 fork() 创建新进程不同的是，clone() 创建进程时可以传递 CLONE_NEW* 类型的命名空间隔离参数，以控制子进程共享的内容。要了解更多信息，请查阅<a href=http://man7.org/linux/man-pages/man2/clone.2.html target=_blank>clone 手册</a>。</li><li><strong>setns()</strong>：用于将某个进程与指定的命名空间分离。通过 setns()，进程可以脱离一个特定的命名空间，使其不再与该命名空间中的其他进程共享资源。</li><li><strong>unshare()</strong>：用于将某个进程加入到指定的命名空间中。通过 unshare()，进程可以加入到一个特定的命名空间，与该命名空间中的其他进程共享资源。</li></ol><h3 id=namespace-的操作>namespace 的操作</h3><ul><li>查看当前系统的 namespace</li></ul><pre><code class=language-bash>lsns –t &lt;type&gt;
+</code></pre><ul><li>查看某进程的 namespace</li></ul><pre><code class=language-bash>ls -la /proc/&lt;pid&gt;/ns/
+</code></pre><ul><li>进入某 namespace 运行命令</li></ul><pre><code class=language-bash>nsenter -t &lt;pid&gt; -n ip addr
+</code></pre><p><strong>Test:</strong></p><pre><code class=language-bash># Linux命令行中，可以使用`unshare`命令结合`clone()`创建一个新的进程，并在其中使用命名空间隔离参数。
+# 创建一个新的进程，并在其中使用命名空间隔离参数
+unshare --pid --net -- sleep 600
+
+ps -ef|grep sleep
+root       37915   34572  0 08:53 pts/1    00:00:00 sudo unshare --pid --net -- sleep 600
+root       37916   37915  0 08:53 pts/3    00:00:00 sudo unshare --pid --net -- sleep 600
+root       37917   37916  0 08:53 pts/3    00:00:00 sleep 600
+zhy        37919   37896  0 08:53 pts/2    00:00:00 grep --color=auto sleep
+
+sudo lsns -t net
+[sudo] password for zhy:
+        NS TYPE NPROCS   PID USER    NETNSID NSFS                           COMMAND
+4026531840 net     277     1 root unassigned                                /sbin/init
+4026532656 net       1 37347 root          0 /run/docker/netns/c986b82be683 bash
+4026532718 net       1 37917 root unassigned                                sleep 600
+
+sudo nsenter -t 37917 -n ip a
+1: lo: &lt;LOOPBACK&gt; mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+</code></pre><ol><li>docker 启动一个 ubuntu</li></ol><pre><code class=language-bash>docker run --rm -it docker.m.daocloud.io/ubuntu:22.10 bash
+</code></pre><ol start=2><li>用另一个窗口 找到这个进程</li></ol><pre><code class=language-bash>ps -ef|grep ubuntu
+# zhy        37247   34017  0 08:20 pts/0    00:00:00 docker run --rm -it docker.m.daocloud.io/ubuntu:22.10 bash
+</code></pre><ol start=3><li>查看这个进程的 namespace</li></ol><pre><code class=language-bash>ls -la /proc/37247/ns/
+total 0
+dr-x--x--x 2 zhy zhy 0 May 27 08:24 .
+dr-xr-xr-x 9 zhy zhy 0 May 27 08:23 ..
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 cgroup -&gt; 'cgroup:[4026531835]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 ipc -&gt; 'ipc:[4026531839]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 mnt -&gt; 'mnt:[4026531841]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 net -&gt; 'net:[4026531840]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 pid -&gt; 'pid:[4026531836]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 pid_for_children -&gt; 'pid:[4026531836]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 time -&gt; 'time:[4026531834]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 time_for_children -&gt; 'time:[4026531834]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 user -&gt; 'user:[4026531837]'
+lrwxrwxrwx 1 zhy zhy 0 May 27 08:24 uts -&gt; 'uts:[4026531838]'
+</code></pre><ol start=4><li>查看namespace</li></ol><pre><code class=language-go>sudo lsns -t pid
+        NS TYPE NPROCS   PID USER COMMAND
+4026531836 pid     275     1 root /sbin/init
+4026532654 pid       1 37347 root bash
+
+sudo lsns -t net
+        NS TYPE NPROCS   PID USER    NETNSID NSFS                           COMMAND
+4026531840 net     275     1 root unassigned                                /sbin/init
+4026532656 net       1 37347 root          0 /run/docker/netns/c986b82be683 bash
+</code></pre><p><strong>为什么查出来执行 <strong><code>**bash**</code></strong> 的 pid 和 <strong><code>**ps -ef**</code></strong> 的不一样？</strong></p><p>一个是<code>docker run</code>的进程 PID</p><p>一个是 容器内部 &lsquo;bash&rsquo; 进程的 PID  这个进程是由<code>docker run</code>的进程通过进程复制（process cloning）创建的子进程。</p><ol start=5><li>在 ubuntu 中执行 <code>ip addr</code> 在主机执行 <code>nsenter -t &lt;pid> -n ip addr</code></li></ol><pre><code class=language-bash># 容器内
+ip addr
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+11: eth0@if12: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP group default
+    link/ether 02:42:ac:11:00:02 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 172.17.0.2/16 brd 172.17.255.255 scope global eth0
+       valid_lft forever preferred_lft forever
+       
+ps -ef
+UID          PID    PPID  C STIME TTY          TIME CMD
+root           1       0  0 08:23 pts/0    00:00:00 bash
+root         360       1  0 09:12 pts/0    00:00:00 ps -ef
+
+# 主机
+sudo nsenter -t 37347 -n -- ip addr # -n 进入网络namespace执行
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+11: eth0@if12: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP group default
+    link/ether 02:42:ac:11:00:02 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 172.17.0.2/16 brd 172.17.255.255 scope global eth0
+       valid_lft forever preferred_lft forever
+      
+sudo nsenter -t 37347 -a -- ps -ef # -a 进入所有namespace执行
+UID          PID    PPID  C STIME TTY          TIME CMD
+root           1       0  0 08:23 pts/0    00:00:00 bash
+root         359       0  0 09:12 ?        00:00:00 ps -ef
+</code></pre><h2 id=cgroup>Cgroup</h2><h3 id=什么是-cgroup>什么是 Cgroup</h3><p>Linux cgroups 的全称是 Linux Control Groups，它是 Linux 内核的特性，主要作用是<strong>限制、记录和隔离进程组（process groups）使用的物理资源（cpu、memory、IO 等）</strong>。</p><h3 id=为什么要使用cgroup><strong>为什么要使用Cgroup?</strong></h3><p>可以做到对 cpu，内存等资源实现精细化的控制，容器技术就使用了 cgroups 提供的资源限制能力来完成cpu，内存等部分的资源控制。</p><h3 id=核心概念>核心概念</h3><ul><li><strong>task</strong>：任务，对应于系统中运行的一个实体，一般是指进程</li><li><strong>subsystem</strong>：子系统，具体的资源控制器（resource class 或者 resource controller），控制某个特定的资源使用。比如 CPU 子系统可以控制 CPU 时间，memory 子系统可以控制内存使用量</li><li><strong>cgroup</strong>：控制组，一组任务和子系统的关联关系，表示对这些任务进行怎样的资源管理策略</li><li><strong>hierarchy</strong>：层级有一系列 cgroup 以一个树状结构排列而成，每个层级通过绑定对应的子系统进行资源控制。层级中的 cgroup 节点可以包含零个或多个子节点，子节点继承父节点挂载的子系统。一个操作系统中可以有多个层级。</li></ul><h4 id=subsystem>subsystem</h4><p>subsystem 是一组资源控制的模块，一般包含有：</p><ul><li>blkio 设置对块设备 (比如硬盘) 的输入输出的访问控制 (block/io)</li><li>cpu 设置 cgroup 中的进程的 CPU 被调度的策略</li><li>cpuacct 可以统计 cgroup 中的进程的 CPU 占用 (cpu account)</li><li>cpuset 在多核机器上设置 cgroup 中的进程可以使用的 CPU 和内存 (此处内存仅使用于 NUMA 架构)</li><li>devices 控制 cgroup 中进程对设备的访问</li><li>freezer 用于挂起 (suspends) 和恢复 (resumes) cgroup 中的进程</li><li>memory 用于控制 cgroup 中进程的内存占用</li><li>net_cls 用于将 cgroup 中进程产生的网络包分类 (classify)，以便 Linux 的 tc (traffic controller) (net_classify) 可以根据分类 (classid) 区分出来自某个 cgroup 的包并做限流或监控。</li><li>net_prio 设置 cgroup 中进程产生的网络流量的优先级</li><li>ns 这个 subsystem 比较特殊，它的作用是 cgroup 中进程在新的 namespace fork 新进程 (NEWNS) 时，创建出一个新的 cgroup，这个 cgroup 包含新的 namespace 中进程。</li></ul><h3 id=v2>v2</h3><p>Cgroup v2<a href=https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html target=_blank>手册</a></p><p>是否加载了Cgroup v2内核模块</p><pre><code class=language-go>cat /sys/fs/cgroup/cgroup.controllers
+cpuset cpu io memory hugetlb pids rdma misc
+</code></pre><h4 id=test>test</h4><h5 id=cpu>Cpu</h5><p>执行一段go代码</p><pre><code class=language-go>package main
+
+func main() {
+    go func() { for{} }()
+    for {}
+}
+
+/*
+执行 go run test.go
+top
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+  39268 zhy       20   0  709572    868    584 R 200.0   0.0   2:12.27 test
+  
+  可以看到使用了2个cpu 因为开个两个goroutine for阻塞
+*/
+</code></pre><p>限制cpu</p><pre><code class=language-bash>sudo mkdir /sys/fs/cgroup/test
+sudo echo &quot;100000 100000&quot; | sudo tee /sys/fs/cgroup/test/cpu.max &gt;/dev/null
+sudo echo &quot;39268&quot; | sudo tee /sys/fs/cgroup/test/cgroup.procs &gt;/dev/null
+
+# top
+#    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+#  39268 zhy       20   0  709572    868    584 R 100.3   0.0   7:45.04 test
+# 马上就只占用一个cpu了
+</code></pre><h5 id=memory>Memory</h5><pre><code class=language-go>#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+
+#define BLOCK_SIZE (100 * 1024 * 1024)
+#define NUM_ALLOCATIONS 10
+#define SLEEP_SECONDS 30
+
+char* allocMemory(int size) {
+    char* out = (char*)malloc(size);
+    memset(out, 'A', size);
+    return out;
+}
+
+int main() {
+    int i;
+
+    for (i = 1; i &lt;= NUM_ALLOCATIONS; i++) {
+        char* block = allocMemory(i * BLOCK_SIZE);
+        printf(&quot;Allocated memory block of size %dMB at address: %p\n&quot;, i * 100, block);
+        sleep(SLEEP_SECONDS);
+    }
+
+    return 0;
+}
+
+/*
+ ps -p 3243 -o rss=,unit=M,cmd=
+      M
+308512 session-4.scope                ./test2
+*/
+</code></pre><p>限制内存</p><pre><code class=language-bash>sudo echo &quot;300000000&quot; |sudo tee /sys/fs/cgroup/test/memory.max &gt;/dev/null
+sudo echo &quot;64417&quot; | sudo tee /sys/fs/cgroup/test/cgroup.procs &gt;/dev/null
+
+#cat memory.current
+#299839488
+</code></pre><h2 id=unionfs>UnionFS</h2><p>联合文件系统（<a href=http://en.wikipedia.org/wiki/UnionFS target=_blank>UnionFS</a>）是一种分层、轻量级并且高性能的文件系统，它支持对文件系统的修改作为一次提交来一层层的叠加，同时可以将不同目录挂载到同一个虚拟文件系统下 (unite several directories into a single virtual filesystem)。</p><p>联合文件系统是 Docker 镜像的基础。镜像可以通过分层来进行继承，基于基础镜像（没有父镜像），可以制作各种具体的应用镜像。</p><p>另外，不同 Docker 容器就可以共享一些基础的文件系统层，同时再加上自己独有的改动层，大大提高了存储的效率。</p><p>最新版 Docker 使用的是 overlay2。</p><h3 id=overlay2>overlay2</h3><p>现在主流基本都是 overlayFS</p><p>OverlayFS 属于文件级的存储驱动，包含了最初的 Overlay 和更新更稳定的 overlay2。</p><p>Overlay 只有两层：upper 层和 lower 层，Lower 层代表镜像层，upper 层代表容器可写层。</p><p><img class=img-zoomable src=/images/33f6f11b-03ff-428c-b68d-07a80f83f3cf.png alt=image.png></p><h4 id=test-1>test</h4><pre><code class=language-bash>mkdir test &amp;&amp; cd test
+mkdir upper lower merged work
+echo &quot;file1 from lower&quot; &gt; lower/file1.txt
+echo &quot;file2 from lowerr&quot; &gt; lower/file2.txt
+echo &quot;file3 from lower&quot; &gt; lower/file3.txt
+echo &quot;file2 from upper&quot; &gt; upper/file2.txt
+echo &quot;file4 from upper&quot; &gt; upper/file4.txt
+
+current_dir=$(pwd)
+sudo mount -t overlay -o lowerdir=&quot;$current_dir/lower&quot;,upperdir=&quot;$current_dir/upper&quot;,workdir=&quot;$current_dir/work&quot; overlay &quot;$current_dir/merged&quot;
+
+cat merged/file1.txt
+file1 from lower
+cat merged/file2.txt
+file2 from upper
+cat merged/file3.txt
+file3 from lower
+cat merged/file4.txt
+file4 from upper
+</code></pre><h3 id=docker-image>docker image</h3><p><img class=img-zoomable src=/images/a5461710-720a-40a5-9707-e2dc086f5925.png alt=image.png></p><p>每一条指令是一层, 下层可以共用</p><h3 id=docker-的文件系统>Docker 的文件系统</h3><p>典型的Linux文件系统组成如下：</p><ul><li>Bootfs（引导文件系统）<ul><li>Bootloader（引导加载程序）：负责加载内核。</li><li>Kernel（内核）：一旦内核加载到内存中，就会卸载bootfs。</li></ul></li><li>Rootfs（根文件系统）<ul><li>/dev、/proc、/bin、/etc等标准目录和文件。</li><li>对于不同的Linux发行版，bootfs基本上是一致的，但rootfs会有所差异。</li></ul></li></ul><h3 id=docker-启动>Docker 启动</h3><p>Linux</p><ul><li>在启动后，首先将 rootfs 设置为 readonly, 进行一系列检查，然后将其切换为 “readwrite” 供用户使用。</li></ul><p>Docker 启动</p><ul><li>初始化时也是将 rootfs 以 readonly 方式加载并检查，然而接下来利用 union mount 的方式将一个 readwrite 文件系统挂载在 readonly 的 rootfs 之上；</li><li>并且允许再次将下层的 FS（file system） 设定为 readonly 并且向上叠加。 这样一组 readonly 和一个 writeable 的结构构成一个 container 的运行时态，每一个 FS 被称作一个 FS 层。</li></ul><h3 id=写操作>写操作</h3><p>由于镜像具有共享特性，所以对容器可写层的操作需要依赖存储驱动提供的写时复制和用时分配机制，以此来 支持对容器可写层的修改，进而提高对存储和内存资源的利用率。</p><ul><li>写时复制 即 Copy-on-Write。<ul><li>一个镜像可以被多个容器使用，但是不需要在内存和磁盘上做多个拷贝。</li><li>在需要对镜像提供的文件进行修改时，该文件会从镜像的文件系统被复制到容器的可写层的文件系统 进行修改，而镜像里面的文件不会改变。</li><li>不同容器对文件的修改都相互独立、互不影响。</li></ul></li><li>用时分配</li><li>按需分配空间，而非提前分配，即当一个文件被创建出来后，才会分配空间。</li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#namespace>Namespace</a><ul><li><a href=#什么是-namespace->什么是 Namespace ？</a></li><li><a href=#介绍>介绍</a></li><li><a href=#namespace-的操作>namespace 的操作</a></li></ul></li><li><a href=#cgroup>Cgroup</a><ul><li><a href=#什么是-cgroup>什么是 Cgroup</a></li><li><a href=#为什么要使用cgroup><strong>为什么要使用Cgroup?</strong></a></li><li><a href=#核心概念>核心概念</a></li><li><a href=#v2>v2</a></li></ul></li><li><a href=#unionfs>UnionFS</a><ul><li><a href=#overlay2>overlay2</a></li><li><a href=#docker-image>docker image</a></li><li><a href=#docker-的文件系统>Docker 的文件系统</a></li><li><a href=#docker-启动>Docker 启动</a></li><li><a href=#写操作>写操作</a></li></ul></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#namespace>Namespace</a><ul><li><a href=#什么是-namespace->什么是 Namespace ？</a></li><li><a href=#介绍>介绍</a></li><li><a href=#namespace-的操作>namespace 的操作</a></li></ul></li><li><a href=#cgroup>Cgroup</a><ul><li><a href=#什么是-cgroup>什么是 Cgroup</a></li><li><a href=#为什么要使用cgroup><strong>为什么要使用Cgroup?</strong></a></li><li><a href=#核心概念>核心概念</a></li><li><a href=#v2>v2</a></li></ul></li><li><a href=#unionfs>UnionFS</a><ul><li><a href=#overlay2>overlay2</a></li><li><a href=#docker-image>docker image</a></li><li><a href=#docker-的文件系统>Docker 的文件系统</a></li><li><a href=#docker-启动>Docker 启动</a></li><li><a href=#写操作>写操作</a></li></ul></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

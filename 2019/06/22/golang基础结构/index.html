@@ -1,0 +1,154 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>golang基础结构 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="go"><meta property="og:title" content="golang基础结构"><meta name=twitter:title content="golang基础结构"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2019/06/22/golang%E5%9F%BA%E7%A1%80%E7%BB%93%E6%9E%84/"><meta property="og:description" content="命名 Go语言中的函数名、变量名、常量名、类型名、语句标号和包名等所有的命名,都遵循一个简单的命名规则：一个名字必须以一个字母（Unicode字母）或下划线开头,后面可以跟任意数量的字母、数字或下划线."><meta name=twitter:description content="命名 Go语言中的函数名、变量名、常量名、类型名、语句标号和包名等所有的命名,都遵循一个简单的命名规则：一个名字必须以一个字母（Unicode字母）或下划线开头,后面可以跟任意数量的字母、数字或下划线."><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2019-06-22T00:00:00+08:00"><meta property="article:modified_time" content="2019-06-22T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2019/06/22/golang%E5%9F%BA%E7%A1%80%E7%BB%93%E6%9E%84/>golang基础结构</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2019-06-22</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2160 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=命名>命名</h2><p>Go语言中的<strong>函数名</strong>、<strong>变量名</strong>、<strong>常量名</strong>、<strong>类型名</strong>、<strong>语句标号</strong>和<strong>包名</strong>等所有的命名,都遵循一个简单的命名规则：一个名字必须以一个字母（Unicode字母）或下划线开头,后面可以跟任意数量的<strong>字母</strong>、<strong>数字</strong>或<strong>下划线</strong>.大写字母和小写字母是不同的：heapSort和Heapsort是两个不同的名字.</p><p>Go语言的<strong>关键字</strong>有25个,关键字<strong>不能用于自定义名字</strong>. 分别为:</p><pre><code class=language-go>break      default       func     interface   select
+case       defer         go       map         struct
+chan       else          goto     package     switch
+const      fallthrough   if       range       type
+continue   for           import   return      var
+</code></pre><p>还有大约30多个预定义的名字,这些内部预先定义的名字并不是关键字，你可以在定义中重新使用它们。在一些特殊的场景中重新定义它们也是有意义的，但是也要注意避免过度而引起语义混乱.</p><pre><code class=language-go>内建常量: true false iota nil
+内建类型: int int8 int16 int32 int64
+          uint uint8 uint16 uint32 uint64 uintptr
+          float32 float64 complex128 complex64
+          bool byte rune string error
+内建函数: make len cap new append copy close delete
+          complex real imag
+          panic recover
+</code></pre><p>在习惯上，Go语言程序员推荐使用 <em><strong>驼峰式</strong></em> 命名，当名字有几个单词组成的时优先使用大小写分隔，而不是优先用下划线分隔。</p><h2 id=声明>声明</h2><p>Go语言主要有四种类型的声明语句：<strong>var</strong>、<strong>const</strong>、<strong>type</strong>和<strong>func</strong>，分别对应<strong>变量</strong>、<strong>常量</strong>、<strong>类型</strong>和<strong>函数实体对象</strong>的声明。</p><p>一个Go语言编写的程序对应一个或多个以.go为文件后缀名的源文件中。每个源文件以包的声明语句开始，说明该源文件是属于哪个包。包声明语句之后是import语句导入依赖的其它包，然后是包一级的类型、变量、常量、函数的声明语句.</p><pre><code class=language-go>package main // main包
+import &quot;fmt&quot; // 引入fmt内部包
+const price = 212.0 // 浮点型常量
+func main() {
+	var f = price                        // f浮点型变量
+	var c = (f - 32) * 5 / 9             // c浮点型变量
+	fmt.Printf(&quot;f = %g  c = %g\n&quot;, f, c) // %g为浮点型占位符
+	fmt.Printf(&quot;f:%T,c:%T&quot;, f, c)        // %T为打印类型  结果:f:float64,c:float64
+}
+</code></pre><h2 id=变量>变量</h2><p>var声明语句可以创建一个特定类型的变量，然后给变量附加一个名字，并且设置变量的初始值。变量声明的一般语法如下：</p><p>var 变量名字 类型 = 表达式</p><pre><code class=language-go>// 例如
+var name string = &quot;zhy&quot;
+</code></pre><p>其中“<em>类型</em>”或“<em>= 表达式</em>”两个部分可以省略其中的一个。如果省略的是类型信息，那么将根据初始化表达式来推导变量的类型信息。如果初始化表达式被省略，那么将用零值初始化该变量。 数值类型变量对应的零值是0，布尔类型变量对应的零值是false，字符串类型对应的零值是空字符串，接口或引用类型（包括slice、指针、map、chan和函数）变量对应的零值是nil。数组或结构体等聚合类型对应的零值是每个元素或字段都是对应该类型的零值。</p><pre><code class=language-go>var s string
+fmt.Println(s) // &quot;&quot;
+</code></pre><p>也可以在一个声明语句中同时声明一组变量，或用一组初始化表达式声明并初始化一组变量。如果省略每个变量的类型，将可以声明多个类型不同的变量（<strong>类型由初始化表达式推导</strong>）：</p><pre><code class=language-go>var i, j, k int                 // int, int, int
+var b, f, s = true, 2.3, &quot;four&quot; // bool, float64, string
+</code></pre><p>一组变量也可以通过调用一个函数，由<strong>函数返回的多个返回值</strong>初始化：</p><pre><code class=language-go>var f, err = os.Open(&quot;./project.log&quot;)  // 打开文件 f为句柄 err为错误
+</code></pre><h3 id=简短变量声明>简短变量声明</h3><p>在函数内部，有一种称为简短变量声明语句的形式可用于声明和初始化局部变量。它以“<strong>名字 := 表达式</strong>”形式声明变量，变量的类型根据表达式来自动推导。</p><pre><code class=language-go>name := &quot;zhy&quot;
+f,err := os.Open(&quot;./project.log&quot;)
+</code></pre><h3 id=指针>指针</h3><p><strong>一个变量对应一个保存了变量对应类型值的内存空间</strong>。<strong>一个指针的值是另一个变量的地址</strong>。一个指针对应变量在内存中的存储位置。并不是每一个值都会有一个内存地址，但是对于每一个变量必然有对应的内存地址。通过指针，我们可以直接读或更新对应变量的值，而不需要知道该变量的名字（如果变量有名字的话）。指针的定义为*+类型比如*int等,或者<strong>把变量的地址赋值给指针</strong>,编辑器会自动推到指针的类型</p><pre><code class=language-go>var number *int
+var a = 100
+var b = &amp;a // &amp;为取值符
+</code></pre><p>用*+指针变量出去所指变量的值</p><pre><code class=language-go>fmt.Println(*p)  // 0
+fmt.Println(*b)  // 100
+</code></pre><h3 id=new初始化>New初始化</h3><p>另一个创建变量的方法是调用用内建的new函数。表达式new(T)将创建一个T类型的匿名变量，初始化为T类型的零值，然后返回变量地址，返回的指针类型为*T。</p><pre><code class=language-go>p := new(int)   // p, *int 类型, 指向匿名的 int 变量
+fmt.Println(*p) // &quot;0&quot;
+*p = 2          // 设置 int 匿名变量的值为 2
+fmt.Println(*p) // &quot;2&quot;
+</code></pre><h3 id=变量的生命周期>变量的生命周期</h3><p>变量的生命周期指的是在程序运行期间变量有效存在的时间间隔。对于在包一级声明的变量来说，它们的生命周期和整个程序的运行周期是一致的。而相比之下，局部变量的声明周期则是动态的：**每次从创建一个新变量的声明语句开始，直到该变量不再被引用为止，然后变量的存储空间可能被回收。**函数的参数变量和返回值变量都是局部变量。它们在函数每次被调用的时候创建。</p><h2 id=赋值>赋值</h2><ul><li>直接赋值x = 100</li><li>通过指针赋值*p = &ldquo;zhy&rdquo;</li><li>结构体赋值stu.name = &ldquo;zhy&rdquo;</li><li>数组切片赋值lst[1] = lst[1] + 1</li><li>二元运算符x *= 6等同于x = x * 6</li><li>自加自减x++x&ndash;</li><li>交换赋值x,y = y,x</li><li>函数赋值f, err = os.Open(&ldquo;project.log&rdquo;)</li></ul><h2 id=类型>类型</h2><p>一个类型声明语句创建了一个新的类型名称，和现有类型具有相同的底层结构。新命名的类型提供了一个方法，用来分隔不同概念的类型，这样即使它们底层类型相同也是不兼容的。</p><pre><code>type 类型名字 底层类型
+</code></pre><h2 id=包>包</h2><p>Go语言中的包和其他语言的库或模块的概念类似，目的都是为了支持<strong>模块化、封装、单独编译和代码重用</strong>。一个<strong>包的源代码保存在一个或多个以.go为文件后缀名的源文件</strong>中，通常一个包所在目录路径的后缀是包的导入路径；</p><h2 id=作用域>作用域</h2><p>一个声明语句将程序中的实体和一个名字关联，比如一个函数或一个变量。声明语句的作用域是指<strong>源代码中可以有效使用这个名字的范围</strong>。</p><pre><code class=language-go>func f() {}
+var g = &quot;g&quot;
+func main() {
+    f := &quot;f&quot;
+    fmt.Println(f) // main函数的作用域
+    fmt.Println(g) // g包作用域
+    fmt.Println(h) // pinic报错 没有找到
+}
+</code></pre><p>用:=声明变量,<strong>只能在函数内使用</strong>,在全局使用会报错</p></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#命名>命名</a></li><li><a href=#声明>声明</a></li><li><a href=#变量>变量</a><ul><li><a href=#简短变量声明>简短变量声明</a></li><li><a href=#指针>指针</a></li><li><a href=#new初始化>New初始化</a></li><li><a href=#变量的生命周期>变量的生命周期</a></li></ul></li><li><a href=#赋值>赋值</a></li><li><a href=#类型>类型</a></li><li><a href=#包>包</a></li><li><a href=#作用域>作用域</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#命名>命名</a></li><li><a href=#声明>声明</a></li><li><a href=#变量>变量</a><ul><li><a href=#简短变量声明>简短变量声明</a></li><li><a href=#指针>指针</a></li><li><a href=#new初始化>New初始化</a></li><li><a href=#变量的生命周期>变量的生命周期</a></li></ul></li><li><a href=#赋值>赋值</a></li><li><a href=#类型>类型</a></li><li><a href=#包>包</a></li><li><a href=#作用域>作用域</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

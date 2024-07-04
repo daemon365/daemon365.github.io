@@ -1,0 +1,119 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>Linux常用命令 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="linux"><meta property="og:title" content="Linux常用命令"><meta name=twitter:title content="Linux常用命令"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2021/08/11/linux%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/"><meta property="og:description" content="常用指令 ls 显示文件或目录 -l 列出文件详细信息l(list) -a 列出当前目录下所有文件及目录，包括隐藏的a(all) mkdir 创建目录 -p 创建目录，若无父目录，则创建p(parent) cd 切换目录 touch 创建空文件 echo 创建带有"><meta name=twitter:description content="常用指令 ls 显示文件或目录 -l 列出文件详细信息l(list) -a 列出当前目录下所有文件及目录，包括隐藏的a(all) mkdir 创建目录 -p 创建目录，若无父目录，则创建p(parent) cd 切换目录 touch 创建空文件 echo 创建带有"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2021-08-11T00:00:00+08:00"><meta property="article:modified_time" content="2021-08-11T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/08/11/linux%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/>Linux常用命令</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-08-11</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1919 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/linux>linux</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=常用指令>常用指令</h2><ol><li><p><code>ls</code> 显示文件或目录</p><ul><li><code>-l</code> 列出文件详细信息l(list)</li><li><code>-a</code> 列出当前目录下所有文件及目录，包括隐藏的a(all)</li></ul></li><li><p><code>mkdir</code> 创建目录</p><ul><li><code>-p</code> 创建目录，若无父目录，则创建p(parent)</li></ul></li><li><p><code>cd</code> 切换目录</p></li><li><p><code>touch</code> 创建空文件</p></li><li><p><code>echo</code> 创建带有内容的文件。</p></li><li><p><code>cat</code> 查看文件内容</p></li><li><p><code>cp</code> 拷贝</p></li><li><p><code>mv</code> 移动或重命名</p></li><li><p><code>rm</code> 删除文件</p><ul><li><code>-r</code> 递归删除，可删除子目录及文件</li><li><code>-f</code> 强制删除</li></ul></li><li><p><code>find</code> 在文件系统中搜索某文件</p></li><li><p><code>wc</code> 统计文本中行数、字数、字符数</p></li><li><p><code>grep</code> 在文本文件中查找某个字符串</p></li><li><p><code>rmdir</code> 删除空目录</p></li><li><p><code>tree</code> 树形结构显示目录，需要安装tree包</p></li><li><p><code>pwd</code> 显示当前目录</p></li><li><p><code>ln</code> 创建链接文件</p></li><li><p><code>more</code>、<code>less</code> 分页显示文本文件内容</p></li><li><p><code>head</code>、<code>tail</code> 显示文件头、尾内容</p></li><li><p><code>ctrl+alt+F1</code> 命令行全屏模式</p></li></ol><h2 id=系统管理命令>系统管理命令</h2><ol><li><code>stat</code> 显示指定文件的详细信息，比ls更详细</li><li><code>who</code> 显示在线登陆用户</li><li><code>whoami</code> 显示当前操作用户</li><li><code>hostname</code> 显示主机名</li><li><code>uname</code> 显示系统信息</li><li><code>top</code> 动态显示当前耗费资源最多进程信息</li><li><code>ps</code> 显示瞬间进程状态 <code>ps -aux</code></li><li><code>du</code> 查看目录大小 <code>du -h /home</code>带有单位显示目录信息</li><li><code>df</code> 查看磁盘大小 <code>df -h</code> 带有单位显示磁盘信息</li><li><code>ifconfig</code> 查看网络情况</li><li><code>ping</code> 测试网络连通</li><li><code>netstat</code> 显示网络状态信息</li><li><code>man</code> 命令不会用了，找男人 如：man ls</li><li><code>clear</code> 清屏</li><li><code>alias</code> 对命令重命名 如：<code>alias showmeit="ps -aux"</code> ，另外解除使用<code>unaliax showmeit</code></li><li><code>kill</code> 杀死进程，可以先用<code>ps</code> 或 <code>top</code>命令查看进程的id，然后再用kill命令杀死进程。</li></ol><h2 id=打包压缩相关命令>打包压缩相关命令</h2><h3 id=gzip>gzip</h3><ul><li>例如：<strong>zip -r mysql.zip mysql</strong> 该句命令的含义是：将mysql文件夹压缩成mysql.zip</li><li><strong>zip -r abcdef.zip abc def.txt</strong> 这句命令的意思是将文件夹abc和文件def.txt压缩成一个压缩包abcdef.zip</li></ul><h3 id=bzip2>bzip2</h3><ul><li>与zip命令相反，这是解压命令，用起来很简单。 如：<strong>unzip mysql.zip</strong> 在当前目录下直接解压mysql.zip。</li></ul><h3 id=tar>tar</h3><ul><li>-c 归档文件</li><li>-x 压缩文件</li><li>-z gzip压缩文件</li><li>-j bzip2压缩文件</li><li>-v 显示压缩或解压缩过程 v(view)</li><li>-f 使用档名</li></ul><pre><code>例：
+
+tar -cvf /home/abc.tar /home/abc        只打包，不压缩
+
+tar -zcvf /home/abc.tar.gz /home/abc     打包，并用gzip压缩
+
+tar -jcvf /home/abc.tar.bz2 /home/abc    打包，并用bzip2压缩
+
+当然，如果想解压缩，就直接替换上面的命令 tar -cvf / tar -zcvf / tar -jcvf 中的“c” 换成“x” 就可以了。
+</code></pre><h2 id=关机重启机器>关机/重启机器</h2><ol><li><p><code>shutdown</code></p><ul><li><code>-r</code> 关机重启</li><li><code>-h</code> 关机不重启</li><li><code>now</code> 立刻关机</li></ul></li><li><p>halt 关机</p></li><li><p>reboot 重启</p></li></ol><h2 id=linux管道>Linux管道</h2><p>将一个命令的标准输出作为另一个命令的标准输入。也就是把几个命令组合起来使用，后一个命令除以前一个命令的结果。</p><ul><li>例：<code>grep -r "close" /home/* | more</code> 在home目录下所有文件中查找，包括close的文件，并分页输出。</li></ul><h2 id=linux软件包管理>Linux软件包管理</h2><h3 id=yum常用命令>yum常用命令</h3><ul><li><code>yum -y install [软件包名]</code>　　安装</li><li>yum erase [<code>软件包名</code>] 　　　　　卸载</li><li><code>yum clean all</code> 　　　　　　　 清除缓存</li><li><code>yum makecache</code>　　　　　　 加载缓存</li></ul><h3 id=本地yum配置>本地yum配置</h3><h4 id=本机创建yum仓库>本机创建yum仓库</h4><ul><li><code>mkdir -p /root/test</code></li><li><code>cd /root/test</code></li><li><code>wget http://mirror.centos.org/centos-7/7/os/x86_64/Packages/dhclient-4.2.5-77.el7.centos.x86_64.rpm</code></li></ul><h4 id=生成repodata依赖文件>生成repodata依赖文件</h4><ul><li><code>create /root/test</code></li></ul><h4 id=修改yum配置文件>修改yum配置文件</h4><ol><li><code>cd /etc/yum.repos.d</code> 进入yum配置目录</li><li><code>touch local.repo</code> 创建配置文件</li><li><code>vim local.repo</code> 编辑配置文件</li></ol><p><img class=img-zoomable src=/images/125f240d-22d7-4a5d-bd5c-90011af5fcb6.png alt></p><h3 id=网络yum配置>网络yum配置</h3><ul><li>`cd /etc/yum.repos.d``</li><li>``touch cenos.repo`</li></ul><p><img class=img-zoomable src=/images/7c39be9b-b80e-4ccf-a279-f68bbe1f7d7a.png alt></p><ul><li><code>vim cenos.repo</code></li></ul><p><img class=img-zoomable src=/images/5c6c19dc-b737-4ffe-aeb2-11a6d0d50ba3.png alt></p><p><strong>注意：baseurl路径，到repodate文件所在目录</strong></p><p><img class=img-zoomable src=/images/9d6cd54d-11f3-4cc1-b5b1-ce9752113070.png alt></p><h3 id=设置本地cache保存路径>设置本地cache保存路径</h3><ul><li><code>vim /etc/yum.conf</code><ul><li><code>cachedir</code> 表示cache保存路径</li><li><code>keepcache</code> 1-表示保存；0-表示不保</li></ul></li></ul><p><img class=img-zoomable src=/images/ba6b2762-da0d-4e56-9833-9d2c1c70ce61.png alt></p><h2 id=vim使用>vim使用</h2><p>vim三种模式：<strong>命令模式、插入模式、编辑模式</strong>。使用<code>ESC</code>或<code>i</code>或：来切换模式。</p><p>命令模式下：</p><ol><li><code>:q</code> 退出</li><li><code>:q!</code> 强制退出</li><li><code>:wq</code> 保存并退出</li><li><code>:set number</code> 显示行号</li><li><code>:set nonumber</code> 隐藏行号</li><li><code>/apache</code> 在文档中查找apache 按n跳到下一个，shift+n上一个</li><li><code>yyp</code> 复制光标所在行，并粘贴</li><li>h(左移一个字符←)、j(下一行↓)、k(上一行↑)、l(右移一个字符→)</li></ol><h2 id=用户及用户组管理>用户及用户组管理</h2><ol><li><code>/etc/passwd</code> 存储用户账号</li><li><code>/etc/group</code> 存储组账号</li><li><code>/etc/shadow</code> 存储用户账号的密码</li><li><code>/etc/gshadow</code> 存储用户组账号的密码</li><li><code>useradd</code> 用户名</li><li><code>userdel</code> 用户名</li><li><code>groupadd</code> 组名</li><li><code>groupdel</code> 组名</li><li><code>passwd root</code> 给root设置密码</li><li><code>/etc/profile</code> 系统环境变量</li><li><code>bash_profile</code> 用户环境变量</li><li><code>.bashrc</code> 用户环境变量</li><li><code>su user</code> 切换用户，加载配置文件<code>.bashrc</code></li><li><code>su - user</code> 切换用户，加载配置文件<code>/etc/profile</code> ，加载<code>bash_profile</code></li></ol><h2 id=更改文件的用户及用户组>更改文件的用户及用户组</h2><p><code>sudo chown [-R] owner[:group] {File|Directory}</code></p><pre><code>例如：还以jdk-7u21-linux-i586.tar.gz为例。属于用户hadoop，组hadoop
+
+要想切换此文件所属的用户及组。可以使用命令。
+
+sudo chown root:root jdk-7u21-linux-i586.tar.gz
+</code></pre><h2 id=文件权限管理>文件权限管理</h2><p>三种基本权限</p><ol><li>R 读 数值表示为4</li><li>W 写 数值表示为2</li><li>X 可执行 数值表示为1</li></ol><p><img class=img-zoomable src=/images/cf92ec89-4103-4131-866e-8e0d9e924c9c.png alt></p><p>如图所示，<code>goblog.exe</code>文件的权限为<code>-rw-rw-rw-</code></p><p><code>-rw-rw-r--</code>一共十个字符，分成四段。</p><ol><li>第一个字符“-”表示普通文件；这个位置还可能会出现“l”链接；“d”表示目录</li><li>第二三四个字符“rw-”表示当前所属用户的权限。 所以用数值表示为4+2=6</li><li>第五六七个字符“rw-”表示当前所属组的权限。 所以用数值表示为4+2=6</li><li>第八九十个字符“r&ndash;”表示其他用户权限。 所以用数值表示为4</li><li>所以操作此文件的权限用数值表示为664</li></ol><h2 id=更改权限>更改权限</h2><p><code>sudo chmod [u所属用户 g所属组 o其他用户 a所有用户] [+增加权限 -减少权限] [r w x] 目录名</code></p><p>例如：有一个文件filename，权限为<code>-rw-r----x1</code> ,将权限值改为<code>-rwxrw-r-x</code>，用数值表示为765</p><ul><li><code>sudo chmod u+x g+w o+r filename</code></li></ul><p>上面的例子可以用数值表示</p><ul><li><code>sudo chmod 765 filename</code></li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#常用指令>常用指令</a></li><li><a href=#系统管理命令>系统管理命令</a></li><li><a href=#打包压缩相关命令>打包压缩相关命令</a><ul><li><a href=#gzip>gzip</a></li><li><a href=#bzip2>bzip2</a></li><li><a href=#tar>tar</a></li></ul></li><li><a href=#关机重启机器>关机/重启机器</a></li><li><a href=#linux管道>Linux管道</a></li><li><a href=#linux软件包管理>Linux软件包管理</a><ul><li><a href=#yum常用命令>yum常用命令</a></li><li><a href=#本地yum配置>本地yum配置</a></li><li><a href=#网络yum配置>网络yum配置</a></li><li><a href=#设置本地cache保存路径>设置本地cache保存路径</a></li></ul></li><li><a href=#vim使用>vim使用</a></li><li><a href=#用户及用户组管理>用户及用户组管理</a></li><li><a href=#更改文件的用户及用户组>更改文件的用户及用户组</a></li><li><a href=#文件权限管理>文件权限管理</a></li><li><a href=#更改权限>更改权限</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#常用指令>常用指令</a></li><li><a href=#系统管理命令>系统管理命令</a></li><li><a href=#打包压缩相关命令>打包压缩相关命令</a><ul><li><a href=#gzip>gzip</a></li><li><a href=#bzip2>bzip2</a></li><li><a href=#tar>tar</a></li></ul></li><li><a href=#关机重启机器>关机/重启机器</a></li><li><a href=#linux管道>Linux管道</a></li><li><a href=#linux软件包管理>Linux软件包管理</a><ul><li><a href=#yum常用命令>yum常用命令</a></li><li><a href=#本地yum配置>本地yum配置</a></li><li><a href=#网络yum配置>网络yum配置</a></li><li><a href=#设置本地cache保存路径>设置本地cache保存路径</a></li></ul></li><li><a href=#vim使用>vim使用</a></li><li><a href=#用户及用户组管理>用户及用户组管理</a></li><li><a href=#更改文件的用户及用户组>更改文件的用户及用户组</a></li><li><a href=#文件权限管理>文件权限管理</a></li><li><a href=#更改权限>更改权限</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

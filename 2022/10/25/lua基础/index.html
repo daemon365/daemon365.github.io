@@ -1,0 +1,208 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>lua基础 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="lua"><meta property="og:title" content="lua基础"><meta name=twitter:title content="lua基础"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2022/10/25/lua%E5%9F%BA%E7%A1%80/"><meta property="og:description" content="什么是lua Lua是一个小巧的脚本语言。它是巴西里约热内卢天主教大学（Pontifical Catholic University of Rio de Janeiro）里的一个由Roberto Ierusalimschy、Waldemar Celes 和 Luiz Henrique de Fig"><meta name=twitter:description content="什么是lua Lua是一个小巧的脚本语言。它是巴西里约热内卢天主教大学（Pontifical Catholic University of Rio de Janeiro）里的一个由Roberto Ierusalimschy、Waldemar Celes 和 Luiz Henrique de Fig"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2022-10-25T00:00:00+08:00"><meta property="article:modified_time" content="2022-10-25T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2022/10/25/lua%E5%9F%BA%E7%A1%80/>lua基础</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2022-10-25</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2508 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/lua>lua</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=什么是lua>什么是lua</h2><p><a href=https://www.lua.org/ target=_blank>Lua</a>是一个小巧的<a href=https://baike.baidu.com/item/%e8%84%9a%e6%9c%ac%e8%af%ad%e8%a8%80 target=_blank>脚本语言</a>。它是<a href=https://baike.baidu.com/item/%e5%b7%b4%e8%a5%bf/5422 target=_blank>巴西</a><a href=https://baike.baidu.com/item/%e9%87%8c%e7%ba%a6%e7%83%ad%e5%86%85%e5%8d%a2%e5%a4%a9%e4%b8%bb%e6%95%99%e5%a4%a7%e5%ad%a6/1050607 target=_blank>里约热内卢天主教大学</a>（Pontifical Catholic University of Rio de Janeiro）里的一个由Roberto Ierusalimschy、Waldemar Celes 和 Luiz Henrique de Figueiredo三人所组成的研究小组于1993年开发的。 其设计目的是为了通过灵活嵌入应用程序中从而为应用程序提供灵活的扩展和定制功能。Lua由标准C编写而成，几乎在所有操作系统和平台上都可以编译，运行。Lua并没有提供强大的库，这是由它的定位决定的。所以Lua不适合作为开发独立应用程序的语言。Lua 有一个同时进行的JIT项目，提供在特定平台上的即时编译功能。</p><h2 id=安装>安装</h2><p>mac：</p><pre><code class=language-bash>brew install lua
+</code></pre><p>检验：</p><pre><code class=language-go>lua -v
+Lua 5.4.2  Copyright (C) 1994-2020 Lua.org, PUC-Rio
+</code></pre><h2 id=注释>注释</h2><h3 id=单行注释>单行注释</h3><p>两个减号是单行注释:</p><pre><code class=language-lua>--
+</code></pre><h3 id=多行注释>多行注释</h3><pre><code class=language-lua>--[[
+ 多行注释
+ 多行注释
+ --]]
+</code></pre><h2 id=标示符>标示符</h2><p>Lua 标示符用于定义一个变量，函数获取其他用户定义的项。标示符以一个字母 A 到 Z 或 a 到 z 或下划线 <strong>_</strong> 开头后加上 0 个或多个字母，下划线，数字（0 到 9）。</p><p>最好不要使用下划线加大写字母的标示符，因为Lua的保留字也是这样的。</p><p>Lua 不允许使用特殊字符如 <strong>@</strong>, <strong>$</strong>, 和 <strong>%</strong> 来定义标示符。 Lua 是一个区分大小写的编程语言。</p><h2 id=关键词>关键词</h2><p>以下列出了 Lua 的保留关键词。保留关键字不能作为常量或变量或其他用户自定义标示符：</p><table><thead><tr><th>and</th><th>break</th><th>do</th><th>else</th></tr></thead><tbody><tr><td>elseif</td><td>end</td><td>false</td><td>for</td></tr><tr><td>function</td><td>if</td><td>in</td><td>local</td></tr><tr><td>nil</td><td>not</td><td>or</td><td>repeat</td></tr><tr><td>return</td><td>then</td><td>true</td><td>until</td></tr><tr><td>while</td><td>goto</td><td></td><td></td></tr></tbody></table><p>一般约定，以下划线开头连接一串大写字母的名字（比如 _VERSION）被保留用于 Lua 内部全局变量。</p><h2 id=全局变量>全局变量</h2><p>在默认情况下，变量总是认为是全局的。</p><p>全局变量不需要声明，给一个变量赋值后即创建了这个全局变量，访问一个没有初始化的全局变量也不会出错，只不过得到的结果是：nil。</p><pre><code class=language-lua>\&gt; print(b)
+nil
+\&gt; b=10
+\&gt; print(b)
+10
+\&gt;
+</code></pre><p>如果你想删除一个全局变量，只需要将变量赋值为nil。</p><pre><code class=language-lua>b = nil
+print(b)      --&gt; nil
+</code></pre><p>这样变量b就好像从没被使用过一样。换句话说, 当且仅当一个变量不等于nil时，这个变量即存在。</p><h1 id=lua-数据类型>Lua 数据类型</h1><p>Lua 是动态类型语言，变量不要类型定义,只需要为变量赋值。 值可以存储在变量中，作为参数传递或结果返回。</p><p>Lua 中有 8 个基本类型分别为：nil、boolean、number、string、userdata、function、thread 和 table。</p><table><thead><tr><th style=text-align:left>数据类型</th><th style=text-align:left>描述</th></tr></thead><tbody><tr><td style=text-align:left>nil</td><td style=text-align:left>这个最简单，只有值nil属于该类，表示一个无效值（在条件表达式中相当于false）。</td></tr><tr><td style=text-align:left>boolean</td><td style=text-align:left>包含两个值：false和true。</td></tr><tr><td style=text-align:left>number</td><td style=text-align:left>表示双精度类型的实浮点数</td></tr><tr><td style=text-align:left>string</td><td style=text-align:left>字符串由一对双引号或单引号来表示</td></tr><tr><td style=text-align:left>function</td><td style=text-align:left>由 C 或 Lua 编写的函数</td></tr><tr><td style=text-align:left>userdata</td><td style=text-align:left>表示任意存储在变量中的C数据结构</td></tr><tr><td style=text-align:left>thread</td><td style=text-align:left>表示执行的独立线路，用于执行协同程序</td></tr><tr><td style=text-align:left>table</td><td style=text-align:left>Lua 中的表（table）其实是一个"关联数组"（associative arrays），数组的索引可以是数字、字符串或表类型。在 Lua 里，table 的创建是通过"构造表达式"来完成，最简单构造表达式是{}，用来创建一个空表。</td></tr></tbody></table><h3 id=table>table</h3><p>Lua 中的表（table）其实是一个"关联数组"（associative arrays），数组的索引可以是数字或者是字符串。</p><pre><code class=language-lua>a = {&quot;zhaohaiyu&quot;, &quot;baidu&quot;, &quot;taobao&quot;, &quot;qq&quot;}
+for key, val in pairs(a) do
+    print(&quot;Key&quot;, key,&quot;value&quot;,val)
+end
+</code></pre><pre><code class=language-lua>lua 1.lua
+Key	1	value	zhaohaiyu
+Key	2	value	baidu
+Key	3	value	taobao
+Key	4	value	qq
+</code></pre><pre><code class=language-lua>a = {}
+a[&quot;zhaohaiyu&quot;] = &quot;https://www.zhaohaiyu.com/&quot;
+a[&quot;百度&quot;] = &quot;https://www.baidu.com/&quot;
+a[&quot;淘宝&quot;] = 11
+a[&quot;淘宝&quot;] = a[&quot;淘宝&quot;] +  12
+for k, v in pairs(a) do
+	print(k .. &quot; : &quot; .. v)
+end
+</code></pre><pre><code class=language-lua>lua 1.lua
+zhaohaiyu : https://www.zhaohaiyu.com/
+淘宝 : 23
+百度 : https://www.baidu.com/
+</code></pre><h3 id=function函数>function（函数）</h3><p>在 Lua 中，函数是被看作是"第一类值（First-Class Value）"，函数可以存在变量里:</p><pre><code class=language-lua>-- function_test.lua 脚本文件
+function factorial1(n)
+    if n == 0 then
+        return 1
+    else
+        return n * factorial1(n - 1)
+    end
+end
+print(factorial1(5))
+factorial2 = factorial1
+print(factorial2(5))
+</code></pre><p>脚本执行结果为：</p><pre><code>$ lua function_test.lua 
+120
+120
+</code></pre><h3 id=thread线程>thread（线程）</h3><p>在 Lua 里，最主要的线程是协同程序（coroutine）。它跟线程（thread）差不多，拥有自己独立的栈、局部变量和指令指针，可以跟其他协同程序共享全局变量和其他大部分东西。</p><p>线程跟协程的区别：线程可以同时多个运行，而协程任意时刻只能运行一个，并且处于运行状态的协程只有被挂起（suspend）时才会暂停。</p><h3 id=userdata自定义类型>userdata（自定义类型）</h3><p>userdata 是一种用户自定义数据，用于表示一种由应用程序或 C/C++ 语言库所创建的类型，可以将任意 C/C++ 的任意数据类型的数据（通常是 struct 和 指针）存储到 Lua 变量中调用。</p><h2 id=lua-变量>Lua 变量</h2><p>变量在使用前，需要在代码中进行声明，即创建该变量。</p><p>编译程序执行代码之前编译器需要知道如何给语句变量开辟存储区，用于存储变量的值。</p><p>Lua 变量有三种类型：全局变量、局部变量、表中的域。</p><p>Lua 中的变量全是全局变量，那怕是语句块或是函数里，除非用 local 显式声明为局部变量。</p><p>局部变量的作用域为从声明位置开始到所在语句块结束。</p><p>变量的默认值均为 nil。</p><pre><code class=language-lua>a = 5               -- 全局变量
+local b = 5         -- 局部变量
+</code></pre><h2 id=for-while-if>for while if</h2><pre><code class=language-lua>a = {1,2,3,4,5,6,7,8,9,10}
+
+for i, v in ipairs(a) do
+    print(i,v)
+end
+</code></pre><h3 id=数值for循环>数值for循环</h3><p>Lua 编程语言中数值 for 循环语法格式:</p><pre><code class=language-lua>for var=exp1,exp2,exp3 do  
+    &lt;执行体&gt;  
+end  
+</code></pre><p>var 从 exp1 变化到 exp2，每次变化以 exp3 为步长递增 var，并执行一次 <strong>&ldquo;执行体&rdquo;</strong>。exp3 是可选的，如果不指定，默认为1。</p><pre><code class=language-lua>for i=10,1,-1 do
+    print(i)
+end
+</code></pre><pre><code class=language-lua>--while
+a=10
+while( a &lt; 20 )
+do
+   print(&quot;a 的值为:&quot;, a)
+   a = a+1
+end
+</code></pre><pre><code class=language-lua>-- repeat
+a = 10
+repeat
+   print(&quot;a的值为:&quot;, a)
+   a = a + 1
+until( a &gt; 15 )
+</code></pre><h3 id=break>break</h3><p>Lua 编程语言 break 语句插入在循环体中，用于退出当前循环或语句，并开始脚本执行紧接着的语句。</p><p>如果你使用循环嵌套，break语句将停止最内层循环的执行，并开始执行的外层的循环语句。</p><h3 id=goto>goto</h3><p>Lua 语言中的 goto 语句允许将控制流程无条件地转到被标记的语句处。</p><pre><code class=language-lua>local a = 1
+::label:: print(&quot;--- goto label ---&quot;)
+
+a = a+1
+if a &lt; 3 then
+    goto label   -- a 小于 3 的时候跳转到标签 label
+end
+</code></pre><pre><code class=language-lua>--if
+if(0)
+then
+    print(&quot;0 为 true&quot;)
+end
+</code></pre><h2 id=lua-函数>Lua 函数</h2><p>在Lua中，函数是对语句和表达式进行抽象的主要方法。既可以用来处理一些特殊的工作，也可以用来计算一些值。</p><p>Lua 提供了许多的内建函数，你可以很方便的在程序中调用它们，如print()函数可以将传入的参数打印在控制台上。</p><p>Lua 函数主要有两种用途：</p><ul><li>1.完成指定的任务，这种情况下函数作为调用语句使用；</li><li>2.计算并返回值，这种情况下函数作为赋值语句的表达式使用。</li></ul><pre><code class=language-lua>--[[ 函数返回两个值的最大值 --]]
+function max(num1, num2)
+
+   if (num1 &gt; num2) then
+      result = num1;
+   else
+      result = num2;
+   end
+
+   return result;
+end
+-- 调用函数
+print(&quot;两值比较最大值为 &quot;,max(10,4))
+print(&quot;两值比较最大值为 &quot;,max(5,6))
+</code></pre></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#什么是lua>什么是lua</a></li><li><a href=#安装>安装</a></li><li><a href=#注释>注释</a><ul><li><a href=#单行注释>单行注释</a></li><li><a href=#多行注释>多行注释</a></li></ul></li><li><a href=#标示符>标示符</a></li><li><a href=#关键词>关键词</a></li><li><a href=#全局变量>全局变量</a></li></ul><ul><li><ul><li><a href=#table>table</a></li><li><a href=#function函数>function（函数）</a></li><li><a href=#thread线程>thread（线程）</a></li><li><a href=#userdata自定义类型>userdata（自定义类型）</a></li></ul></li><li><a href=#lua-变量>Lua 变量</a></li><li><a href=#for-while-if>for while if</a><ul><li><a href=#数值for循环>数值for循环</a></li><li><a href=#break>break</a></li><li><a href=#goto>goto</a></li></ul></li><li><a href=#lua-函数>Lua 函数</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#什么是lua>什么是lua</a></li><li><a href=#安装>安装</a></li><li><a href=#注释>注释</a><ul><li><a href=#单行注释>单行注释</a></li><li><a href=#多行注释>多行注释</a></li></ul></li><li><a href=#标示符>标示符</a></li><li><a href=#关键词>关键词</a></li><li><a href=#全局变量>全局变量</a></li></ul><ul><li><ul><li><a href=#table>table</a></li><li><a href=#function函数>function（函数）</a></li><li><a href=#thread线程>thread（线程）</a></li><li><a href=#userdata自定义类型>userdata（自定义类型）</a></li></ul></li><li><a href=#lua-变量>Lua 变量</a></li><li><a href=#for-while-if>for while if</a><ul><li><a href=#数值for循环>数值for循环</a></li><li><a href=#break>break</a></li><li><a href=#goto>goto</a></li></ul></li><li><a href=#lua-函数>Lua 函数</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

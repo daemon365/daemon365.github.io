@@ -1,1 +1,3 @@
 User-agent: *
+
+Sitemap: https://daemon365.dev/sitemap.xml

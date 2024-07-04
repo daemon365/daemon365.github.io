@@ -1,0 +1,123 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>Posts - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><link rel=alternate type=application/rss+xml href=https://daemon365.dev/post/index.xml title=Daemon><meta property="og:title" content="Posts"><meta name=twitter:title content="Posts"><meta property="og:type" content="website"><meta property="og:url" content="https://daemon365.dev/post/"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="og:updated_time" content="2024-06-15T16:14:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/06/15/boltdb-%E5%8E%9F%E7%90%86/>boltdb 原理</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-06-15</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;9599 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/boltdb>boltdb</a>&nbsp;<a href=/tags/etcd>etcd</a>&nbsp;<a href=/tags/golang>golang</a>&nbsp;<a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93>数据库</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;<a href=/tags/%E4%BA%8B%E5%8A%A1>事务</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">简介 介绍及简单使用：https://www.cnblogs.com/daemon365/p/17690167.html 源码地址：https://github.com/etcd-io/bbolt page 因为 boltdb</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/06/10/etcd-watch-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/>etcd watch 实现原理</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-06-10</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;5056 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/boltdb>boltdb</a>&nbsp;<a href=/tags/etcd>etcd</a>&nbsp;<a href=/tags/golang>golang</a>&nbsp;<a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93>数据库</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">介绍 在 etcd 中，watch 是一个非常重要的特性，它可以让客户端监控 etcd 中的 key 或者一组 key，当 key 发生变化时，etcd 会通知客户端。本文将介绍 etcd watch 的实现原理。 etcdctl watch /test # 当 /test 的值发生变化时，会输出如下信息 PUT /test a PUT</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/26/etcd-mvcc-%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84%E5%8F%8A%E6%B5%81%E7%A8%8B/>etcd MVCC 存储结构及流程</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-26</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1946 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/boltdb>boltdb</a>&nbsp;<a href=/tags/etcd>etcd</a>&nbsp;<a href=/tags/golang>golang</a>&nbsp;<a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93>数据库</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">什么是 MVCC MVCC 是 Multi-Version Concurrency Control 的缩写，即多版本并发控制。它是一种并发控制的方法，用于在数据库系统中实现事务的隔离性。MVCC 是一种乐观锁机制，它通过保存数据的多个版本来实现事务的隔禽性。在 etcd 中，MVCC 是用于实现</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/12/istio-sidecar-%E5%B7%A5%E4%BD%9C%E6%96%B9%E5%BC%8F/>istio sidecar 工作方式</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-12</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;4294 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/istio>istio</a>&nbsp;<a href=/tags/sidecar>sidecar</a>&nbsp;<a href=/tags/service-mesh>service mesh</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;<a href=/tags/iptables>iptables</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">istio 是什么 Istio 是一个开放源代码的服务网格，它为基于微服务的应用程序提供了一种统一的方式来连接、保护、监控和管理服务。Istio 主要解决的是在微服务架构中的服务间通信的复杂性问题，它通过提供服务间的负载均衡</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/09/docker-containerd-runc-containerd-shim%E7%AD%89%E7%BB%84%E4%BB%B6%E7%9A%84%E5%85%B3%E7%B3%BB/>docker containerd runc containerd-shim等组件的关系</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-09</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1476 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/docker>docker</a>&nbsp;<a href=/tags/containerd>containerd</a>&nbsp;<a href=/tags/runc>runc</a>&nbsp;<a href=/tags/containerd-shim>containerd-shim</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;<a href=/tags/cri>cri</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">早期 kubelet 创建容器工作原理 因为 docker 出生的比 k8s 早，所以 k8s 早期的容器运行时都是基于 docker 的，kubelet 通过 docker 的 api 创建容器。后来，k8s 官方不想绑死在 docker 这架马车上，就把容器运行时抽象出来，定义了一个接口，叫 CRI (container runtime</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/08/boltdb-%E4%BB%8B%E7%BB%8D/>boltdb 介绍</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-08</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;4592 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/boltdb>boltdb</a>&nbsp;<a href=/tags/etcd>etcd</a>&nbsp;<a href=/tags/golang>golang</a>&nbsp;<a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93>数据库</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">介绍 BoltDB 是一个用 Go 语言编写的嵌入式键/值数据库。以下是关于 BoltDB 的一些基本介绍： 键/值存储: BoltDB 为应用程序提供了简单的键/值存储接口。 事务: BoltDB 支持完整的 ACID 事务。 嵌入式: 与像 MySQL 或 PostgreSQL 这样的数据库系统不同，Bolt</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/08/kube-proxy-%E6%B5%81%E9%87%8F%E6%B5%81%E8%BD%AC%E6%96%B9%E5%BC%8F/>kube-proxy 流量流转方式</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-08</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2575 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/kube-proxy>kube-proxy</a>&nbsp;<a href=/tags/iptables>iptables</a>&nbsp;<a href=/tags/ipvs>ipvs</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">简介 kube-proxy 是 Kubernetes 集群中负责服务发现和负载均衡的组件之一。它是一个网络代理，运行在每个节点上, 用于 service 资源的负载均衡。它有两种模式：iptables 和 ipvs。 iptables iptables 是 Linux 系统中的一个用户空间实用程序，用于配置内核</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/03/kubernetes-%E5%AD%98%E5%82%A8%E6%B5%81%E7%A8%8B/>kubernetes 存储流程</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-03</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2884 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/csi>csi</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">PV 与 PVC PVC (PersistentVolumeClaim)，命名空间（namespace）级别的资源，由 用户 or StatefulSet 控制器（根据VolumeClaimTemplate） 创建。PVC 类似于 Pod，Pod 消耗 Node 资</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/01/kubelet-%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90/>kubelet 原理分析</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-01</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;8901 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/kubelet>kubelet</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;<a href=/tags/golang>golang</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">Reference https://atbug.com/kubelet-source-code-analysis/ kubelet 简介 kubernetes 分为控制面和数据面，kubelet 就是数据面最主要的组件，在每个节点上启动，主要负责容器的创建、启停、监控、日志收集等工作。它是一个在每个集群节点上运行的代理，负责确保节点上的容器根据Po</div></div><div class=post><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/04/20/kubernetes-cnicontainer-network-inferface/>kubernetes CNI(Container Network Inferface)</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-04-20</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;2368 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/cni>cni</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;<a href=/tags/network>network</a>&nbsp;</span></div><div class="post-item post-summary markdown-body">为什么需要 CNI 在 kubernetes 中，pod 的网络是使用 network namespace 隔离的，但是我们有时又需要互相访问网络，这就需要一个网络插件来实现 pod 之间的网络通信。CNI 就是为了解决这个问题而诞生的。CNI 是 container network interface 的缩写，它是一个规范，定</div></div><div class=pagination><div class="pag-item pag-current"><a href=/post/>1</a></div><div class=pag-item><a href=/post/page/2/>2</a></div><div class=pag-item><a href=/post/page/3/>3</a></div><div class=pag-item><a href=/post/page/4/>4</a></div><div class=pag-item><a href=/post/page/5/>5</a></div><div class=pag-next><a href=/post/page/2/><i class="iconfont icon-chevron-forward-circle-sharp"></i></a></div><div class=pag-last><a href=/post/page/10/><i class="iconfont icon-caret-forward-circle-sharp"></i></a></div></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

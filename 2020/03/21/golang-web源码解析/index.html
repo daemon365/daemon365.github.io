@@ -1,0 +1,335 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>golang web源码解析 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="go,源码分析"><meta property="og:title" content="golang web源码解析"><meta name=twitter:title content="golang web源码解析"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2020/03/21/golang-web%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"><meta property="og:description" content='Go的web工作原理 在Go中使用及其简单的代码即可开启一个web服务。如下： //开启web服务 func test(){ http.HandleFunc("/", sayHello) err := http.ListenAndServe(":9090",nil) if err!=nil { log.Fatal("ListenAndServer:",err) } } func sayHello(w http.ResponseWriter, r *http.Request){ r.ParseForm() fmt.Println("path",r.URL.Path) fmt.Println("scheme",r.URL.Scheme) fmt.Fprintf(w, "Hello Guest!") } 在使用ListenAndServe这个方法时，系统就会给'><meta name=twitter:description content='Go的web工作原理 在Go中使用及其简单的代码即可开启一个web服务。如下： //开启web服务 func test(){ http.HandleFunc("/", sayHello) err := http.ListenAndServe(":9090",nil) if err!=nil { log.Fatal("ListenAndServer:",err) } } func sayHello(w http.ResponseWriter, r *http.Request){ r.ParseForm() fmt.Println("path",r.URL.Path) fmt.Println("scheme",r.URL.Scheme) fmt.Fprintf(w, "Hello Guest!") } 在使用ListenAndServe这个方法时，系统就会给'><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2020-03-21T00:00:00+08:00"><meta property="article:modified_time" content="2020-03-21T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2020/03/21/golang-web%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/>golang web源码解析</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2020-03-21</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;3713 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=go的web工作原理>Go的web工作原理</h2><p>在Go中使用及其简单的代码即可开启一个web服务。如下：</p><pre><code class=language-go>//开启web服务
+func test(){
+    http.HandleFunc(&quot;/&quot;, sayHello)
+    err := http.ListenAndServe(&quot;:9090&quot;,nil)
+    if err!=nil {
+        log.Fatal(&quot;ListenAndServer:&quot;,err)
+    }
+}
+
+func sayHello(w http.ResponseWriter, r *http.Request){
+    r.ParseForm()
+    fmt.Println(&quot;path&quot;,r.URL.Path)
+    fmt.Println(&quot;scheme&quot;,r.URL.Scheme)
+
+    fmt.Fprintf(w, &quot;Hello Guest!&quot;)
+}
+</code></pre><p>在使用<code>ListenAndServe</code>这个方法时，系统就会给我们指派一个路由器，<code>DefaultServeMux</code>是系统默认使用的路由器，如果<code>ListenAndServe</code>这个方法的第2个参数传入nil，系统就会默认使用<code>DefaultServeMux</code>。当然，这里也可以传入自定义的路由器。</p><p>先来看<code>http.HandleFunc("/", sayHello)</code>，从<code>HandleFunc</code>方法点进去，如下：</p><pre><code class=language-go>func HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
+    DefaultServeMux.HandleFunc(pattern, handler)
+}
+</code></pre><p>在这里调用了<code>DefaultServeMux</code>的<code>HandleFunc</code>方法，这个方法有两个参数，<code>pattern</code>是匹配的路由规则，<code>handler</code>表示这个路由规则对应的处理方法，并且这个处理方法有两个参数。</p><p>在我们书写的代码示例中，<code>pattern</code>对应<code>/</code>，<code>handler</code>对应<code>sayHello</code>，当我们在浏览器中输入<code>http://localhost:9090</code>时，就会触发<code>sayHello</code>方法。</p><p>我们再顺着<code>DefaultServeMux</code>的<code>HandleFunc</code>方法继续点下去，如下：</p><pre><code class=language-go>func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
+    mux.Handle(pattern, HandlerFunc(handler))
+}
+
+</code></pre><p>在这个方法中，路由器又调用了<code>Handle</code>方法，注意这个<code>Handle</code>方法的第2个参数，将之前传入的<code>handler</code>这个响应方法强制转换成了<code>HandlerFunc</code>类型。</p><p>这个<code>HandlerFunc</code>类型到底是个什么呢？如下：</p><pre><code class=language-go>type HandlerFunc func(ResponseWriter, *Request)
+
+</code></pre><p>看来和我们定义的<code>SayHello</code>方法的类型都差不多。但是！！！
+这个<code>HandlerFunc</code>默认实现了<code>ServeHTTP</code>接口！这样<code>HandlerFunc</code>对象就有了<code>ServeHTTP</code>方法！如下：</p><pre><code class=language-go>// ServeHTTP calls f(w, r).
+func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request) {
+    f(w, r)
+}
+
+</code></pre><p>这个细节是十分重要的，因为这一步关乎到当路由规则匹配时，相应的响应方法是否会被调用的问题！这个方法的调用时机会在下一小节中讲到。</p><p>接下来，我们返回去继续看<code>mux</code>的<code>Handle</code>方法，也就是这段代码<code>mux.Handle(pattern, HandlerFunc(handler))</code>。这段代码做了哪些事呢？源码如下：</p><pre><code class=language-go>func (mux *ServeMux) Handle(pattern string, handler Handler) {
+    mux.mu.Lock()
+    defer mux.mu.Unlock()
+
+    if pattern == &quot;&quot; {
+        panic(&quot;http: invalid pattern &quot; + pattern)
+    }
+    if handler == nil {
+        panic(&quot;http: nil handler&quot;)
+    }
+    if mux.m[pattern].explicit {
+        panic(&quot;http: multiple registrations for &quot; + pattern)
+    }
+
+    if mux.m == nil {
+        mux.m = make(map[string]muxEntry)
+    }
+    mux.m[pattern] = muxEntry{explicit: true, h: handler, pattern: pattern}
+
+    if pattern[0] != '/' {
+        mux.hosts = true
+    }
+
+    // Helpful behavior:
+    // If pattern is /tree/, insert an implicit permanent redirect for /tree.
+    // It can be overridden by an explicit registration.
+    n := len(pattern)
+    if n &gt; 0 &amp;&amp; pattern[n-1] == '/' &amp;&amp; !mux.m[pattern[0:n-1]].explicit {
+        // If pattern contains a host name, strip it and use remaining
+        // path for redirect.
+        path := pattern
+        if pattern[0] != '/' {
+            // In pattern, at least the last character is a '/', so
+            // strings.Index can't be -1.
+            path = pattern[strings.Index(pattern, &quot;/&quot;):]
+        }
+        url := &amp;url.URL{Path: path}
+        mux.m[pattern[0:n-1]] = muxEntry{h: RedirectHandler(url.String(), StatusMovedPermanently), pattern: pattern}
+    }
+}
+
+</code></pre><p>代码挺多，其实主要就做了一件事，向<code>DefaultServeMux</code>的<code>map[string]muxEntry</code>中增加对应的路由规则和<code>handler</code>。</p><p><code>map[string]muxEntry</code>是个什么鬼？</p><ul><li><code>map</code>是一个字典对象，它保存的是<code>key-value</code>。</li><li><code>[string]</code>表示这个字典的<code>key</code>是<code>string</code>类型的，这个<code>key</code>值会保存我们的路由规则。</li><li><code>muxEntry</code>是一个实例对象，这个对象内保存了路由规则对应的处理方法。</li></ul><p>找到相应代码，如下：</p><pre><code class=language-go>//路由器
+type ServeMux struct {
+    mu    sync.RWMutex
+    m     map[string]muxEntry //路由规则，一个string对应一个mux实例对象，map的key就是注册的路由表达式(string类型的)
+    hosts bool // whether any patterns contain hostnames
+}
+
+//muxEntry
+type muxEntry struct {
+    explicit bool
+    h        Handler //这个路由表达式对应哪个handler
+    pattern  string
+}
+
+//路由响应方法
+type Handler interface {
+    ServeHTTP(ResponseWriter, *Request)  //handler的路由实现器
+}
+
+</code></pre><p><code>ServeMux</code>就是这个系统默认的路由器。</p><p>最后，总结一下这个部分：</p><ol><li>调用<code>http.HandleFunc("/", sayHello)</code></li><li>调用<code>DefaultServeMux</code>的<code>HandleFunc()</code>，把我们定义的<code>sayHello()</code>包装成<code>HandlerFunc</code>类型</li><li>继续调用<code>DefaultServeMux</code>的<code>Handle()</code>，向<code>DefaultServeMux</code>的<code>map[string]muxEntry</code>中增加路由规则和对应的<code>handler</code></li></ol><p>OK，这部分代码做的事就这么多，第一部分结束。</p><p>第二部分主要就是研究这句代码<code>err := http.ListenAndServe(":9090",nil)</code>，也就是<code>ListenAndServe</code>这个方法。从这个方法点进去，如下：</p><pre><code class=language-go>func ListenAndServe(addr string, handler Handler) error {
+    server := &amp;Server{Addr: addr, Handler: handler}
+    return server.ListenAndServe()
+}
+
+</code></pre><p>在这个方法中，初始化了一个<code>server</code>对象，然后调用这个<code>server</code>对象的<code>ListenAndServe</code>方法，在这个方法中，如下：</p><pre><code class=language-go>func (srv *Server) ListenAndServe() error {
+    addr := srv.Addr
+    if addr == &quot;&quot; {
+        addr = &quot;:http&quot;
+    }
+    ln, err := net.Listen(&quot;tcp&quot;, addr)
+    if err != nil {
+        return err
+    }
+    return srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
+}
+
+</code></pre><p>在这个方法中，调用了<code>net.Listen("tcp", addr)</code>，也就是底层用TCP协议搭建了一个服务，然后监控我们设置的端口。</p><p>代码的最后，调用了<code>srv</code>的<code>Serve</code>方法，如下：</p><pre><code class=language-go>func (srv *Server) Serve(l net.Listener) error {
+    defer l.Close()
+    if fn := testHookServerServe; fn != nil {
+        fn(srv, l)
+    }
+    var tempDelay time.Duration // how long to sleep on accept failure
+
+    if err := srv.setupHTTP2_Serve(); err != nil {
+        return err
+    }
+
+    srv.trackListener(l, true)
+    defer srv.trackListener(l, false)
+
+    baseCtx := context.Background() // base is always background, per Issue 16220
+    ctx := context.WithValue(baseCtx, ServerContextKey, srv)
+    ctx = context.WithValue(ctx, LocalAddrContextKey, l.Addr())
+    for {
+        rw, e := l.Accept()
+        if e != nil {
+            select {
+            case &lt;-srv.getDoneChan():
+                return ErrServerClosed
+            default:
+            }
+            if ne, ok := e.(net.Error); ok &amp;&amp; ne.Temporary() {
+                if tempDelay == 0 {
+                    tempDelay = 5 * time.Millisecond
+                } else {
+                    tempDelay *= 2
+                }
+                if max := 1 * time.Second; tempDelay &gt; max {
+                    tempDelay = max
+                }
+                srv.logf(&quot;http: Accept error: %v; retrying in %v&quot;, e, tempDelay)
+                time.Sleep(tempDelay)
+                continue
+            }
+            return e
+        }
+        tempDelay = 0
+        c := srv.newConn(rw)
+        c.setState(c.rwc, StateNew) // before Serve can return
+        go c.serve(ctx)
+    }
+}
+
+</code></pre><p>最后3段代码比较重要，也是Go语言支持高并发的体现，如下：</p><pre><code class=language-go>c := srv.newConn(rw)
+c.setState(c.rwc, StateNew) // before Serve can return
+go c.serve(ctx)
+
+</code></pre><p>上面那一大坨代码，总体意思是进入方法后，首先开了一个<code>for</code>循环，在<code>for</code>循环内时刻Accept请求，请求来了之后，会为每个请求创建一个<code>Conn</code>，然后单独开启一个<code>goroutine</code>，把这个请求的数据当做参数扔给这个<code>Conn</code>去服务：<code>go c.serve()</code>。用户的每一次请求都是在一个新的<code>goroutine</code>去服务，每个请求间相互不影响。</p><p>在<code>conn</code>的<code>serve</code>方法中，有一句代码很重要，如下：</p><pre><code class=language-go>serverHandler{c.server}.ServeHTTP(w, w.req)
+
+</code></pre><p>表示<code>serverHandler</code>也实现了<code>ServeHTTP</code>接口，<code>ServeHTTP</code>方法实现如下：</p><pre><code class=language-go>func (sh serverHandler) ServeHTTP(rw ResponseWriter, req *Request) {
+    handler := sh.srv.Handler
+    if handler == nil {
+        handler = DefaultServeMux
+    }
+    if req.RequestURI == &quot;*&quot; &amp;&amp; req.Method == &quot;OPTIONS&quot; {
+        handler = globalOptionsHandler{}
+    }
+    handler.ServeHTTP(rw, req)
+}
+
+</code></pre><p>在这里如果<code>handler</code>为空（这个<code>handler</code>就可以理解为是我们自定义的路由器），就会使用系统默认的<code>DefaultServeMux</code>，代码的最后调用了<code>DefaultServeMux</code>的<code>ServeHTTP()</code></p><pre><code class=language-go>func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
+    if r.RequestURI == &quot;*&quot; {
+        if r.ProtoAtLeast(1, 1) {
+            w.Header().Set(&quot;Connection&quot;, &quot;close&quot;)
+        }
+        w.WriteHeader(StatusBadRequest)
+        return
+    }
+    h, _ := mux.Handler(r)  //这里返回的h是Handler接口对象
+    h.ServeHTTP(w, r)       //调用Handler接口对象的ServeHTTP方法实际上就调用了我们定义的sayHello方法
+}
+
+</code></pre><p>路由器接收到请求之后，如果是<code>*</code>那么关闭链接，如果不是<code>*</code>就调用<code>mux.Handler(r)</code>返回该路由对应的处理<code>Handler</code>，然后执行该<code>handler</code>的<code>ServeHTTP</code>方法，也就是这句代码<code>h.ServeHTTP(w, r)</code>，<code>mux.Handler(r)</code>做了什么呢？如下：</p><pre><code class=language-go>func (mux *ServeMux) Handler(r *Request) (h Handler, pattern string) {
+    if r.Method != &quot;CONNECT&quot; {
+        if p := cleanPath(r.URL.Path); p != r.URL.Path {
+            _, pattern = mux.handler(r.Host, p)
+            url := *r.URL
+            url.Path = p
+            return RedirectHandler(url.String(), StatusMovedPermanently), pattern
+        }
+    }
+
+    return mux.handler(r.Host, r.URL.Path)
+}
+
+func (mux *ServeMux) handler(host, path string) (h Handler, pattern string) {
+    mux.mu.RLock()
+    defer mux.mu.RUnlock()
+
+    // Host-specific pattern takes precedence over generic ones
+    if mux.hosts {
+        h, pattern = mux.match(host + path)
+    }
+    if h == nil {
+        h, pattern = mux.match(path)
+    }
+    if h == nil {
+        h, pattern = NotFoundHandler(), &quot;&quot;
+    }
+    return
+}
+
+func (mux *ServeMux) match(path string) (h Handler, pattern string) {
+    var n = 0
+    for k, v := range mux.m {  //mux.m就是系统默认路由的map
+        if !pathMatch(k, path) {
+            continue
+        }
+        if h == nil || len(k) &gt; n {
+            n = len(k)
+            h = v.h
+            pattern = v.pattern
+        }
+    }
+    return
+}
+
+</code></pre><p>它会根据用户请求的<code>URL</code>到路由器里面存储的<code>map</code>中匹配，匹配成功就会返回存储的<code>handler</code>，调用这个<code>handler</code>的<code>ServeHTTP()</code>就可以执行到相应的处理方法了，这个处理方法实际上就是我们刚开始定义的<code>sayHello()</code>，只不过这个<code>sayHello()</code>被<code>HandlerFunc</code>又包了一层，因为<code>HandlerFunc</code>实现了<code>ServeHTTP</code>接口，所以在调用<code>HandlerFunc</code>对象的<code>ServeHTTP()</code>时，实际上在<code>ServeHTTP ()</code>的内部调用了我们的<code>sayHello()</code>。</p><p>总结一下：</p><ol><li>调用<code>http.ListenAndServe(":9090",nil)</code></li><li>实例化<code>server</code></li><li>调用<code>server</code>的<code>ListenAndServe()</code></li><li>调用<code>server</code>的<code>Serve</code>方法，开启<code>for</code>循环，在循环中Accept请求</li><li>对每一个请求实例化一个<code>Conn</code>，并且开启一个<code>goroutine</code>为这个请求进行服务<code>go c.serve()</code></li><li>读取每个请求的内容<code>c.readRequest()</code></li><li>调用<code>serverHandler</code>的<code>ServeHTTP()</code>，如果<code>handler</code>为空，就把<code>handler</code>设置为系统默认的路由器<code>DefaultServeMux</code></li><li>调用<code>handler</code>的<code>ServeHTTP()</code> =>实际上是调用了<code>DefaultServeMux</code>的<code>ServeHTTP()</code></li><li>在<code>ServeHTTP()</code>中会调用路由对应处理<code>handler</code></li><li>在路由对应处理<code>handler</code>中会执行<code>sayHello()</code></li></ol><p>有一个需要注意的点：
+<code>DefaultServeMux</code>和路由对应的处理方法<code>handler</code>都实现了<code>ServeHTTP</code>接口，他们俩都有<code>ServeHTTP</code>方法，但是方法要达到的目的不同，在<code>DefaultServeMux</code>的<code>ServeHttp()</code>里会执行路由对应的处理<code>handler</code>的<code>ServeHttp()</code>。</p><h2 id=文章转自>文章转自</h2><p><a href=https://juejin.cn/post/6844903550993039374 target=_blank>https://juejin.cn/post/6844903550993039374</a></p></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#go的web工作原理>Go的web工作原理</a></li><li><a href=#文章转自>文章转自</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#go的web工作原理>Go的web工作原理</a></li><li><a href=#文章转自>文章转自</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

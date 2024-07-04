@@ -1,0 +1,194 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>从kratos分析breaker熔断器源码实现 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="go,kratos,breaker,源码分析"><meta property="og:title" content="从kratos分析breaker熔断器源码实现"><meta name=twitter:title content="从kratos分析breaker熔断器源码实现"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2021/09/04/%E4%BB%8Ekratos%E5%88%86%E6%9E%90breaker%E7%86%94%E6%96%AD%E5%99%A8%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0/"><meta property="og:description" content="为什么要用熔断 前面我们讲过限流保证服务的可用性，不被突如其来的流量打爆。但是两种情况是限流解决不了的。 如果我们服务只能处理1000QPS，但是有10wQPS打过来，服务还是会炸。因为拒绝请求也需要成本"><meta name=twitter:description content="为什么要用熔断 前面我们讲过限流保证服务的可用性，不被突如其来的流量打爆。但是两种情况是限流解决不了的。 如果我们服务只能处理1000QPS，但是有10wQPS打过来，服务还是会炸。因为拒绝请求也需要成本"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2021-09-04T17:55:01+08:00"><meta property="article:modified_time" content="2021-09-04T17:55:01+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2021/09/04/%E4%BB%8Ekratos%E5%88%86%E6%9E%90breaker%E7%86%94%E6%96%AD%E5%99%A8%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0/>从kratos分析breaker熔断器源码实现</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2021-09-04</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1005 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;<a href=/tags/kratos>kratos</a>&nbsp;<a href=/tags/breaker>breaker</a>&nbsp;<a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90>源码分析</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=为什么要用熔断>为什么要用熔断</h2><p>前面我们讲过限流保证服务的可用性，不被突如其来的流量打爆。但是两种情况是限流解决不了的。</p><ol><li>如果我们服务只能处理1000QPS，但是有10wQPS打过来，服务还是会炸。因为拒绝请求也需要成本。</li><li>服务但是io型的，会把mysql，redis，mq等中间件打挂。</li></ol><p>所以，我们遵循一个思路，可不可以client端在失败的多的时候就不调用了，直接返回错误呢？</p><h2 id=什么是熔断>什么是熔断</h2><p>熔断器是为了当依赖的服务已经出现故障时，主动阻止对依赖服务的请求。保证自身服务的正常运行不受依赖服务影响，防止雪崩效应。</p><h2 id=源码分析>源码分析</h2><h3 id=源码地址>源码地址</h3><ul><li><a href=https://github.com/go-kratos/aegis/tree/main/circuitbreaker target=_blank>https://github.com/go-kratos/aegis/tree/main/circuitbreaker</a></li></ul><h3 id=circuitbreaker-接口>CircuitBreaker 接口</h3><pre><code class=language-go>type CircuitBreaker interface {
+	Allow() error
+	MarkSuccess()
+	MarkFailed()
+}
+</code></pre><ol><li>Allow()<ul><li>判断熔断器是否允许通过</li></ul></li><li>MarkSuccess()<ul><li>熔断器成功的回调</li></ul></li><li>MarkFailed()<ul><li>熔断器失败的回调</li></ul></li></ol><h3 id=group-结构体>Group 结构体</h3><pre><code class=language-go>type Group struct {
+   mutex sync.Mutex
+   val   atomic.Value
+
+   New func() CircuitBreaker
+}
+</code></pre><ol><li><code>mutex</code><ul><li>互斥锁，使val这个map不产生数据竞争</li></ul></li><li><code>val</code><ul><li>map，存储name -> CircuitBreaker</li></ul></li><li><code>New</code><ul><li>生成一个CircuitBreaker</li></ul></li></ol><h4 id=get方法>Get方法</h4><pre><code class=language-go>// Get .
+func (g *Group) Get(name string) CircuitBreaker {
+	m, ok := g.val.Load().(map[string]CircuitBreaker)
+	if ok {
+		breaker, ok := m[name]
+		if ok {
+			return breaker // 很具name从val拿出 breaker 如果存在返回
+		}
+	}
+	// slowpath for group don`t have specified name breaker.
+	g.mutex.Lock()
+	nm := make(map[string]CircuitBreaker, len(m)+1)
+	for k, v := range m {
+		nm[k] = v
+	}
+	breaker := g.New()
+	nm[name] = breaker // 如果不存在 生成一个 并放入map 并返回
+	g.val.Store(nm)
+	g.mutex.Unlock()
+	return breaker
+}
+</code></pre><h3 id=breaker-结构体>Breaker 结构体</h3><pre><code class=language-go>// Breaker is a sre CircuitBreaker pattern.
+type Breaker struct {
+   stat window.RollingCounter
+   r    *rand.Rand
+   // rand.New(...) returns a non thread safe object
+   randLock sync.Mutex
+
+   // Reducing the k will make adaptive throttling behave more aggressively,
+   // Increasing the k will make adaptive throttling behave less aggressively.
+   k       float64
+   request int64
+
+   state int32
+}
+</code></pre><ol><li>stat<ul><li>滑动窗口，记录成功失败</li></ul></li><li>r<ul><li>随机数</li></ul></li><li>randLock<ul><li>读写锁</li></ul></li><li>k 成功系数<ul><li>total(总数) = success * k</li></ul></li><li>request 请求数<ul><li>当总数 &lt; request时，不判断是否熔断</li></ul></li><li>state<ul><li>熔断器状态 打开或者关闭</li></ul></li></ol><h3 id=allow方法>Allow()方法</h3><pre><code class=language-go>// Allow request if error returns nil.
+func (b *Breaker) Allow() error {
+	success, total := b.summary() // 从活动窗口获取成功数和总数
+	k := b.k * float64(success) // 根据k成功系数 获取
+
+	// check overflow requests = K * success
+	if total &lt; b.request || float64(total) &lt; k { // 如果总数&lt;request 或者  总数 &lt; k 
+		if atomic.LoadInt32(&amp;b.state) == StateOpen { 
+			atomic.CompareAndSwapInt32(&amp;b.state, StateOpen, StateClosed) // 如果state是打开 关闭
+		}
+		return nil
+	}
+	if atomic.LoadInt32(&amp;b.state) == StateClosed { 
+		atomic.CompareAndSwapInt32(&amp;b.state, StateClosed, StateOpen) // 如果state是关闭 打开
+	}
+	dr := math.Max(0, (float64(total)-k)/float64(total+1)) // 获取系数，当k越大 dr越小
+	drop := b.trueOnProba(dr)
+	// trueOnProba 获取水机数
+  // 返回是否&lt;dr
+  
+	if drop { // 如果是 拒绝请求
+		return circuitbreaker.ErrNotAllowed
+	}
+	return nil
+}
+
+func (b *Breaker) trueOnProba(proba float64) (truth bool) {
+	b.randLock.Lock()
+	truth = b.r.Float64() &lt; proba
+	b.randLock.Unlock()
+	return
+}
+</code></pre><p>使用trueOnProba的原因是，当熔断器关闭时，随机让一部分请求通过，当success越大，请求的通过的数量就越多。用这些数据成功与否，放入窗口统计，当成功数达到要求时，就可以关闭熔断器了。</p><h3 id=marksuccess以及markfailed方法>MarkSuccess()以及MarkFailed()方法</h3><pre><code class=language-go>// MarkSuccess mark requeest is success.
+func (b *Breaker) MarkSuccess() {
+	b.stat.Add(1) // 成功数+1
+}
+
+// MarkFailed mark request is failed.
+func (b *Breaker) MarkFailed() {
+	// NOTE: when client reject requets locally, continue add counter let the
+	// drop ratio higher.
+	b.stat.Add(0) // 失败数+1
+}
+</code></pre><h2 id=流程图>流程图</h2><p><img class=img-zoomable src=/images/304df75e-973a-4a9f-8bcd-c1f5315092b4.png alt></p><h2 id=原文地址>原文地址</h2><ul><li><a href=https://zhaohaiyu.com/posts/microservice/breaker/ target=_blank>https://zhaohaiyu.com/posts/microservice/breaker/</a></li></ul><hr><p><img class=img-zoomable src=/images/5a7a74d9-0f0f-415c-825a-7da85dcbd4d9.png alt></p><p><img class=img-zoomable src=/images/e3bfa05c-c2aa-4ae9-94b2-a8a12aa4bd7e.gif alt></p></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#为什么要用熔断>为什么要用熔断</a></li><li><a href=#什么是熔断>什么是熔断</a></li><li><a href=#源码分析>源码分析</a><ul><li><a href=#源码地址>源码地址</a></li><li><a href=#circuitbreaker-接口>CircuitBreaker 接口</a></li><li><a href=#group-结构体>Group 结构体</a></li><li><a href=#breaker-结构体>Breaker 结构体</a></li><li><a href=#allow方法>Allow()方法</a></li><li><a href=#marksuccess以及markfailed方法>MarkSuccess()以及MarkFailed()方法</a></li></ul></li><li><a href=#流程图>流程图</a></li><li><a href=#原文地址>原文地址</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#为什么要用熔断>为什么要用熔断</a></li><li><a href=#什么是熔断>什么是熔断</a></li><li><a href=#源码分析>源码分析</a><ul><li><a href=#源码地址>源码地址</a></li><li><a href=#circuitbreaker-接口>CircuitBreaker 接口</a></li><li><a href=#group-结构体>Group 结构体</a></li><li><a href=#breaker-结构体>Breaker 结构体</a></li><li><a href=#allow方法>Allow()方法</a></li><li><a href=#marksuccess以及markfailed方法>MarkSuccess()以及MarkFailed()方法</a></li></ul></li><li><a href=#流程图>流程图</a></li><li><a href=#原文地址>原文地址</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

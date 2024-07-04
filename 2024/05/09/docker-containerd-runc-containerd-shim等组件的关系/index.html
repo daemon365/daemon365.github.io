@@ -1,0 +1,110 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>docker containerd runc containerd-shim等组件的关系 - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="docker,containerd,runc,containerd-shim,kubernetes,cri"><meta property="og:title" content="docker containerd runc containerd-shim等组件的关系"><meta name=twitter:title content="docker containerd runc containerd-shim等组件的关系"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2024/05/09/docker-containerd-runc-containerd-shim%E7%AD%89%E7%BB%84%E4%BB%B6%E7%9A%84%E5%85%B3%E7%B3%BB/"><meta property="og:description" content="早期 kubelet 创建容器工作原理 因为 docker 出生的比 k8s 早，所以 k8s 早期的容器运行时都是基于 docker 的，kubelet 通过 docker 的 api 创建容器。后来，k8s 官方不想绑死在 docker 这架马车上，就把容器运行时抽象出来，定义了一个接口，叫 CRI (container runtime"><meta name=twitter:description content="早期 kubelet 创建容器工作原理 因为 docker 出生的比 k8s 早，所以 k8s 早期的容器运行时都是基于 docker 的，kubelet 通过 docker 的 api 创建容器。后来，k8s 官方不想绑死在 docker 这架马车上，就把容器运行时抽象出来，定义了一个接口，叫 CRI (container runtime"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2024-05-09T20:56:00+08:00"><meta property="article:modified_time" content="2024-05-09T20:56:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2024/05/09/docker-containerd-runc-containerd-shim%E7%AD%89%E7%BB%84%E4%BB%B6%E7%9A%84%E5%85%B3%E7%B3%BB/>docker containerd runc containerd-shim等组件的关系</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2024-05-09</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1476 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/docker>docker</a>&nbsp;<a href=/tags/containerd>containerd</a>&nbsp;<a href=/tags/runc>runc</a>&nbsp;<a href=/tags/containerd-shim>containerd-shim</a>&nbsp;<a href=/tags/kubernetes>kubernetes</a>&nbsp;<a href=/tags/cri>cri</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=早期-kubelet-创建容器工作原理>早期 kubelet 创建容器工作原理</h2><p>因为 docker 出生的比 k8s 早，所以 k8s 早期的容器运行时都是基于 docker 的，kubelet 通过 docker 的 api 创建容器。后来，k8s 官方不想绑死在 docker 这架马车上，就把容器运行时抽象出来，定义了一个接口，叫 CRI (<a href=https://github.com/kubernetes/cri-api target=_blank>container runtime interface</a>)，容器运行时接口, 通过这个接口，kubelet 可以和任何容器运行时交互。但是，docker 并没有实现这个接口，k8s 也不想直接失去 docker 的用户，所以 k8s 官方在 kubelet 中实现了一个叫 docker-shim 的组件，这个组件简单来说就是把 cri 接口转换成 docker 的 api，这样 kubelet 就可以和 docker 交互了, 这个组件在 kuberbetes 1.24 版本中已经被移除了。至于实现了 cri 接口的容器运行时，比如 containerd，cri-o 等，kubelet 可以直接和它们交互。</p><p>调用架构图如下：</p><p><img class=img-zoomable src=/images/481a4d67-401a-4e8e-af61-3534d23a7d69.png alt></p><p>目前 dockershim 组件已经删除，不能使用了，所以 k8s 1.24 版本之后，kubelet 只能和实现了 cri 接口的容器运行时交互，比如 containerd，cri-o 等。</p><p>这里建议使用 containerd 因为 containerd 是 docker 官方出品的，而且 containerd 也是 docker 的核心组件，docker 的容器运行时就是基于 containerd 的，所以 containerd 的稳定性和可靠性都是有保障的。</p><h2 id=docker-containerd-runc-的关系>docker containerd runc 的关系</h2><p>因为 podman 等新兴 container runtime 的崛起，docker 不想失去定义标准的机会，所以 docker 官方把 containerd 从 docker 中分离出来，独立成一个项目，实现了 cri 接口，这种 kubelet 就可以通过 cri 直接调用 containerd 了。然后，docker 官方又把 runc 从 containerd 中分离出来，独立成一个项目，定义了一个叫 OCI (<a href=https://opencontainers.org/ target=_blank>Open Container Initiative</a>) 的标准，这个标准定义了容器的格式和运行时，runc 就是这个标准的实现，目前实现 oci 的还有 crun youki keta 等。</p><p>因为 containerd 和 runc 脱胎于 docker，docker 又不能维护两份代码，所以 docker 就通过调用 containerd ，containerd 再 通过配置实现 oci 标准的 runc 来创建容器。 当然，你也可以手动配置其他实现了 oci 标准的容器运行时。</p><p>调用架构图如下：</p><p><img class=img-zoomable src=/images/d7b1939a-5608-43da-a883-42ad662e94c7.png alt></p><p>在上图中可以看到 containerd 不是直接调用 runc 的，而是通过 containerd-shim 来调用 runc 的，这个是为什么？</p><h2 id=runc>runc</h2><p>runc 是一款设计精巧的命令行工具，专注于创建和运行符合 Open Container Initiative（OCI）规范的容器。执行 runc start 时，它首先通过 fork 创建一个子进程，在这个新进程中进行一系列容器运行的准备工作，包括准备文件系统、配置 namespaces 和 cgroups 。接着，通过 execve 系统调用，这个子进程变身为容器的首个进程——通常被称作“init”进程——并执行用户指定的首个命令（例如，bash）。</p><p>如果首个命令是一个shell（比如 bash），当执行一个shell命令（例如 ls）时，bash 会 fork 并执行相应的子进程。这个新的子进程执行 ls 命令并在完成任务后退出。此后，bash 可能继续接受新的命令，或在结束会话后终止。</p><p>当容器的“init”进程终止时，整个容器也会按照规定的生命周期走向结束。不同的命令和应用会在这个基本框架下有不同的具体行为，但总体流程大致一致。</p><p>如果这些容器的进的父进程是 containerd ，那么当 containerd 进程挂掉或者重启时，容器的进程也会挂掉，这样就不符合容器的定义了，所以 containerd 通过 containerd-shim 来调用 runc，这样当 containerd 挂掉时，容器的进程还是会继续运行的。</p><h2 id=containerd-shim>containerd-shim</h2><p>containerd-shim 是一个轻量级的代理进程，它的主要作用是：</p><ol><li>通过runC命令可以启动、执行容器、进程；</li><li>监控容器进程状态，当容器执行完成后，通过exit fifo文件报告容器进程结束状态；</li><li>当此容器SHIM的第一个实例进程被杀死后，reaper掉所有其子进程；</li></ol><p>当 containerd 通过 containerd-shim 来调用 runc 后, 会把 containerd-shim 的挂到 system （pid=1）的进程下，这样当 containerd 挂掉或者重启时，containerd-shim 还是会继续运行的，这样就保证了容器的进程不会挂掉。</p><p>验证，这里我随便启动了一下 docker 容器看下效果：</p><pre><code class=language-BASH># 启动的nginx 容器
+root       19455   19435  0 22:20 ?        00:00:00 nginx: master process nginx -g daemon off;
+# nginx 进程的父进程是 containerd-shim
+root       19435       1  0 22:20 ?        00:00:00 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 0af95b326dfc8fee31bd28abb61e5d23a9cee98fada2b32c5ade852a0782f559 -address /run/containerd/containerd.sock
+# containerd-shim 的父进程是 systemd
+</code></pre></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#早期-kubelet-创建容器工作原理>早期 kubelet 创建容器工作原理</a></li><li><a href=#docker-containerd-runc-的关系>docker containerd runc 的关系</a></li><li><a href=#runc>runc</a></li><li><a href=#containerd-shim>containerd-shim</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#早期-kubelet-创建容器工作原理>早期 kubelet 创建容器工作原理</a></li><li><a href=#docker-containerd-runc-的关系>docker containerd runc 的关系</a></li><li><a href=#runc>runc</a></li><li><a href=#containerd-shim>containerd-shim</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>

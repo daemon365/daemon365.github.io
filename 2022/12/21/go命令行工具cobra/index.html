@@ -1,0 +1,197 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=HandheldFriendly content="True"><meta http-equiv=X-UA-Compatible content="IE=edge"><meta http-equiv=Cache-Control content="no-transform"><meta http-equiv=Cache-Control content="no-siteapp"><meta name=generator content="Hugo 0.128.1"><link rel="shortcut icon" href=/imgs/icons/favicon.ico><title>Go命令行工具cobra - Daemon</title>
+<meta name=author content="daemon365"><meta name=description content="Don't let yourself stop."><meta name=keywords content="go"><meta property="og:title" content="Go命令行工具cobra"><meta name=twitter:title content="Go命令行工具cobra"><meta property="og:type" content="article"><meta property="og:url" content="https://daemon365.dev/2022/12/21/go%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%B7%A5%E5%85%B7cobra/"><meta property="og:description" content="关于 Cobra 是 Go 的 CLI 框架。它包含一个用于创建功能强大的现代 CLI 应用程序的库，以及一个用于快速生成基于 Cobra 的应用程序和命令文件的工具。 Cobra 由 Go 项目成员和 hugo 作者 spf13 创建，已经被许多流行的 Go 项目采用，比如 kubernet"><meta name=twitter:description content="关于 Cobra 是 Go 的 CLI 框架。它包含一个用于创建功能强大的现代 CLI 应用程序的库，以及一个用于快速生成基于 Cobra 的应用程序和命令文件的工具。 Cobra 由 Go 项目成员和 hugo 作者 spf13 创建，已经被许多流行的 Go 项目采用，比如 kubernet"><meta property="og:image" content="https://daemon365.dev/imgs/icons/favicon.ico"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://daemon365.dev/imgs/icons/favicon.ico"><meta property="article:published_time" content="2022-12-21T00:00:00+08:00"><meta property="article:modified_time" content="2022-12-21T00:00:00+08:00"><style>@media(prefers-color-scheme:dark){body[data-theme=auto] img{filter:brightness(60%)}}body[data-theme=dark] img{filter:brightness(60%)}</style><link rel=stylesheet href=https://daemon365.dev/assets/css/fuji.min.4e0456c767a797dadceacfba968921e887d900af9fd8d0953bebc1524ea1dec6c6a4a5ec0c0b77280884a642028ce374f31206dd96c6d7d143d5ee3c372f2c31.css integrity="sha512-TgRWx2enl9rc6s+6lokh6IfZAK+f2NCVO+vBUk6h3sbGpKXsDAt3KAiEpkICjON08xIG3ZbG19FD1e48Ny8sMQ=="></head><body data-theme=light data-theme-auto=false><script data-cfasync=false>var fujiThemeData=localStorage.getItem("fuji_data-theme");fujiThemeData?fujiThemeData!=="auto"&&document.body.setAttribute("data-theme",fujiThemeData==="dark"?"dark":"light"):localStorage.setItem("fuji_data-theme","auto")</script><header><div class="container-lg clearfix"><div class="col-12 header"><a class=title-main href=https://daemon365.dev/>Daemon</a>
+<span class=title-sub>Don't let yourself stop.</span></div></div></header><main><div class="container-lg clearfix"><div class="col-12 col-md-9 float-left content"><article><h2 class="post-item post-title"><a href=https://daemon365.dev/2022/12/21/go%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%B7%A5%E5%85%B7cobra/>Go命令行工具cobra</a></h2><div class="post-item post-meta"><span><i class="iconfont icon-today-sharp"></i>&nbsp;2022-12-21</span>
+<span><i class="iconfont icon-file-tray-sharp"></i>&nbsp;1774 words</span>
+<span><i class="iconfont icon-pricetags-sharp"></i>&nbsp;<a href=/tags/go>go</a>&nbsp;</span></div><div class="post-content markdown-body"><h2 id=关于>关于</h2><p>Cobra 是 Go 的 CLI 框架。它包含一个用于创建功能强大的现代 CLI 应用程序的库，以及一个用于快速生成基于 Cobra 的应用程序和命令文件的工具。</p><p>Cobra 由 Go 项目成员和 hugo 作者 <a href=https://github.com/spf13 target=_blank>spf13</a> 创建，已经被许多流行的 Go 项目采用，比如 kubernetes、docker等</p><h2 id=特性>特性</h2><ul><li>简单的基于子命令的 CLIs：<code>app server</code>、<code>app fetch</code> 等；</li><li>完全兼容 <a href=https://zh.wikipedia.org/wiki/%E5%8F%AF%E7%A7%BB%E6%A4%8D%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E6%8E%A5%E5%8F%A3 target=_blank>POSIX（可移植操作系统接口）</a> 的标志（包括短版和长版）</li><li>嵌套子命令</li><li>全局、局部和级联的标志</li><li>使用 <code>cobra init appname</code> 和 <code>cobra add cmdname</code> 轻松生成应用程序和命令</li><li>智能提示（<code>app srver</code> &mldr;did you mean <code>app server</code>）</li><li>自动生成命令和标志的帮助</li><li>自动识别 <code>-h</code>、<code>--help</code> 等帮助标识</li><li>自动为你的应用程序生成的 bash 自动完成</li><li>自动为你的应用程序生成 man 手册</li><li>命令别名，以便你可以更改内容而不会破坏它们</li><li>定义自己的帮助，用法等的灵活性。</li><li>可选与 <a href=https://github.com/spf13/viper target=_blank>viper</a> 紧密集成，可用于 <a href=https://12factor.net/zh_cn/ target=_blank>12factor</a> 应用程序</li></ul><h2 id=概念>概念</h2><p>Cobra 构建在命令（commands）、参数（arguments）和 标志（flags）上。</p><p><strong>Commands</strong> 代表动作，<strong>Args</strong> 是事物，<strong>Flags</strong> 是这些动作的修饰符。</p><p>最好的应用程序在使用时会像句子一样读起来。用户将知道如何使用该应用程序，因为他们将自然地了解如何使用它。</p><p>遵循的模式是 <code>APPNAME VERB NOUN --ADJECTIVE</code>。 或 <code>APPNAME COMMAND ARG --FLAG</code></p><p>一些真实的例子可以更好地说明这一点。</p><p>在以下示例中，<code>server</code> 是命令，<code>port</code> 是标志：</p><pre><code class=language-shell>hugo server --port=1313
+</code></pre><p>在此命令中，我们告诉 Git 克隆 url 的内容：</p><pre><code class=language-shell>git clone URL --bare
+</code></pre><h3 id=命令command>命令（Command）</h3><p>命令是应用程序的核心。应用程序提供的每一个交互都包含在 Command 中。一个命令可以有子命令和可选的运行一个动作。</p><p>在上面的示例中，<code>server</code> 是命令。</p><p><a href=https://pkg.go.dev/github.com/spf13/cobra#Command target=_blank>Cobra.Command API</a>)</p><h3 id=标志flags>标志（Flags）</h3><p>一个标志是一种修饰命令行为的方式。Cobra 支持完全符合 [<a href=https://zh.wikipedia.org/wiki/%E5%8F%AF%E7%A7%BB%E6%A4%8D%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E6%8E%A5%E5%8F%A3 target=_blank>https://zh.wikipedia.org/wiki/可移植操作系统接口</a>) 包。</p><p>Cobra 命令可以定义一直保留到子命令的标志和仅可用于该命令的标志。</p><p>在上面的例子中，<code>port</code> 是标志。</p><p>标志的功能是 <a href=https://github.com/spf13/pflag target=_blank>pflag</a> 库提供的，该库是一个标准库的 fork，在维护相同接口的基础上兼容了 <a href=https://zh.wikipedia.org/wiki/%E5%8F%AF%E7%A7%BB%E6%A4%8D%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E6%8E%A5%E5%8F%A3 target=_blank>POSIX（可移植操作系统接口）</a>。</p><h2 id=简单使用>简单使用</h2><pre><code class=language-go>// 目录结构
+├── add
+│   └── add.go
+├── go.mod
+├── go.sum
+└── main.go
+</code></pre><pre><code class=language-go>// main.go
+package main
+
+import (
+	&quot;log&quot;
+	&quot;test/add&quot;
+
+	&quot;github.com/spf13/cobra&quot;
+)
+
+var rootCmd = &amp;cobra.Command{
+	Use:     &quot;test&quot;,
+	Short:   &quot;测试&quot;,
+	Long:    `我要写博客做个测试呢,这是个常提示`,
+	Version: &quot;v1.1&quot;,
+}
+
+func init() {
+	rootCmd.AddCommand(add.CmdAdd)
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatal(err)
+	}
+}
+</code></pre><pre><code class=language-go>// add/add.go
+package add
+
+import (
+	&quot;fmt&quot;
+
+	&quot;github.com/spf13/cobra&quot;
+)
+
+var CmdAdd = &amp;cobra.Command{
+	Use:   &quot;add&quot;,
+	Short: &quot;新键&quot;,
+	Long:  &quot;新建个文件&quot;,
+	RunE:  RunE,
+}
+
+var path string
+
+func init() {
+	CmdAdd.Flags().StringVarP(&amp;path, &quot;path&quot;, &quot;p&quot;, path, &quot;file path&quot;)
+}
+
+func RunE(cmd *cobra.Command, args []string) error {
+	fmt.Println(&quot;假装创建个文件 path=&quot;, path)
+	return nil
+}
+</code></pre><p>执行结果</p><pre><code class=language-bash># go run main.go --help
+我要写博客做个测试呢,这是个常提示
+
+Usage:
+  test [command]
+
+Available Commands:
+  add         新键
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+
+Flags:
+  -h, --help      help for test
+  -v, --version   version for test
+
+Use &quot;test [command] --help&quot; for more information about a command.
+
+# go run main.go add --help
+新建个文件
+
+Usage:
+  test add [flags]
+
+Flags:
+  -h, --help          help for add
+  -p, --path string   file path
+  
+# go run main.go add --path=/user/pass 
+假装创建个文件 path= /user/pass
+
+# go run main.go --version
+test version v1.1
+</code></pre><h2 id=command参数>Command参数</h2><p>例子中的<code>cobra.Command</code>是个结构体，有很多字段，都是做什么用的呢？</p><p>这些参数是Go语言中<code>cobra</code>库中的<code>Command</code>结构体的字段，用于定义命令行工具的行为和选项。它们的作用如下：</p><ul><li><code>Use</code>: 命令名称。</li><li><code>Aliases</code>: 命令的别名。</li><li><code>SuggestFor</code>: 命令建议使用的单词列表。</li><li><code>Short</code>: 命令简短描述。</li><li><code>GroupID</code>: 命令所属的命令组。</li><li><code>Long</code>: 命令详细描述。</li><li><code>Example</code>: 命令的使用示例。</li><li><code>ValidArgs</code>: 命令接受的参数列表。</li><li><code>ValidArgsFunction</code>: 命令用于提供动态参数补全的函数。</li><li><code>Args</code>: 命令的位置参数列表。</li><li><code>ArgAliases</code>: 位置参数的别名。</li><li><code>BashCompletionFunction</code>: 生成Bash补全的函数。</li><li><code>Deprecated</code>: 命令是否已经过时的标志。</li><li><code>Annotations</code>: 命令的附加注释信息。</li><li><code>Version</code>: 命令版本号。</li><li><code>PersistentPreRun</code>: 每次执行该命令之前都会执行的函数。</li><li><code>PersistentPreRunE</code>: 每次执行该命令之前都会执行的返回错误的函数。</li><li><code>PreRun</code>: 每次执行该命令之前都会执行的函数。</li><li><code>PreRunE</code>: 每次执行该命令之前都会执行的返回错误的函数。</li><li><code>Run</code>: 执行命令的函数。</li><li><code>RunE</code>: 执行命令的返回错误的函数。</li><li><code>PostRun</code>: 每次执行该命令之后都会执行的函数。</li><li><code>PostRunE</code>: 每次执行该命令之后都会执行的返回错误的函数。</li><li><code>PersistentPostRun</code>: 每次执行该命令之后都会执行的函数。</li><li><code>PersistentPostRunE</code>: 每次执行该命令之后都会执行的返回错误的函数。</li><li><code>FParseErrWhitelist</code> : 忽略特定的解析错误</li><li><code>CompletionOptions</code> :控制 shell 自动完成的选项</li><li><code>TraverseChildren</code>: 解析父命令的标志后再执行子命令</li><li><code>Hidden</code> : 隐藏命令，不在可用命令列表中显示</li><li><code>SilenceErrors</code> : 静默下游错误</li><li><code>SilenceUsage</code> : 静默错误时不显示用法</li><li><code>DisableFlagParsing</code> : 禁用标志解析</li><li><code>DisableAutoGenTag</code> : 禁用自动生成的标记</li><li><code>DisableFlagsInUseLine</code> : 在打印帮助或生成文档时禁用“[flags]”在用法行中的添加</li><li><code>DisableSuggestions</code> : 禁用基于Levenshtein距离的建议</li><li><code>SuggestionsMinimumDistance</code> : 显示建议的最小Levenshtein距离</li></ul><h2 id=reference>Reference</h2><ul><li><a href=https://juejin.cn/post/6924541628031959047 target=_blank>https://juejin.cn/post/6924541628031959047</a></li><li><a href=https://cobra.dev/ target=_blank>Cobra. Dev</a></li></ul></div></article><div class="license markdown-body"><blockquote><p>Unless otherwise noted, the content of this site is licensed under <a rel=license href=http://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a>.</p></blockquote></div></div><aside class="col-12 col-md-3 float-left sidebar"><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#关于>关于</a></li><li><a href=#特性>特性</a></li><li><a href=#概念>概念</a><ul><li><a href=#命令command>命令（Command）</a></li><li><a href=#标志flags>标志（Flags）</a></li></ul></li><li><a href=#简单使用>简单使用</a></li><li><a href=#command参数>Command参数</a></li><li><a href=#reference>Reference</a></li></ul></nav></div></aside></div><div class=btn><div class=btn-menu id=btn-menu><i class="iconfont icon-grid-sharp"></i></div><div class=btn-toggle-mode><i class="iconfont icon-contrast-sharp"></i></div><div class=btn-scroll-top><i class="iconfont icon-chevron-up-circle-sharp"></i></div></div><aside class=sidebar-mobile style=display:none><div class=sidebar-wrapper><div class="sidebar-item sidebar-pages"><h3>Pages</h3><ul><li><a href=/>Home</a></li><li><a href=/archives/>Archives</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li><li><a href=/search/>Search</a></li></ul></div><div class="sidebar-item sidebar-links"><h3>Links</h3><ul><li><a href=https://github.com/daemon365 target=_blank><span>My GitHub</span></a></li></ul></div><div class="sidebar-item sidebar-tags"><h3>Tags</h3><div><span><a href=/tags/bbr/>BBR</a>
+</span><span><a href=/tags/boltdb/>Boltdb</a>
+</span><span><a href=/tags/breaker/>Breaker</a>
+</span><span><a href=/tags/cdi/>Cdi</a>
+</span><span><a href=/tags/cgroup/>Cgroup</a>
+</span><span><a href=/tags/client-go/>Client-Go</a>
+</span><span><a href=/tags/cni/>Cni</a>
+</span><span><a href=/tags/containerd/>Containerd</a>
+</span><span><a href=/tags/containerd-shim/>Containerd-Shim</a>
+</span><span><a href=/tags/cri/>Cri</a>
+</span><span><a href=/tags/csi/>Csi</a>
+</span><span><a href=/tags/docker/>Docker</a>
+</span><span><a href=/tags/etcd/>Etcd</a>
+</span><span><a href=/tags/gin/>Gin</a>
+</span><span><a href=/tags/go/>Go</a>
+</span><span><a href=/tags/golang/>Golang</a>
+</span><span><a href=/tags/grpc/>Grpc</a>
+</span><span><a href=/tags/iptables/>Iptables</a>
+</span><span><a href=/tags/ipvs/>Ipvs</a>
+</span><span><a href=/tags/istio/>Istio</a>
+</span><span><a href=/tags/kratos/>Kratos</a>
+</span><span><a href=/tags/kube-proxy/>Kube-Proxy</a>
+</span><span><a href=/tags/kubelet/>Kubelet</a>
+</span><span><a href=/tags/kubernetes/>Kubernetes</a>
+</span><span><a href=/tags/linux/>Linux</a>
+</span><span><a href=/tags/lua/>Lua</a>
+</span><span><a href=/tags/makefile/>Makefile</a>
+</span><span><a href=/tags/mysql/>Mysql</a>
+</span><span><a href=/tags/namespace/>Namespace</a>
+</span><span><a href=/tags/network/>Network</a>
+</span><span><a href=/tags/nginx/>Nginx</a>
+</span><span><a href=/tags/opentelemetry/>Opentelemetry</a>
+</span><span><a href=/tags/prometheus/>Prometheus</a>
+</span><span><a href=/tags/protobuf/>Protobuf</a>
+</span><span><a href=/tags/rabbitmq/>RabbitMQ</a>
+</span><span><a href=/tags/redis/>Redis</a>
+</span><span><a href=/tags/runc/>Runc</a>
+</span><span><a href=/tags/service-mesh/>Service Mesh</a>
+</span><span><a href=/tags/sidecar/>Sidecar</a>
+</span><span><a href=/tags/sqlx/>Sqlx</a>
+</span><span><a href=/tags/thrift/>Thrift</a>
+</span><span><a href=/tags/unionfs/>UnionFS</a>
+</span><span><a href=/tags/viper/>Viper</a>
+</span><span><a href=/tags/vscode/>Vscode</a>
+</span><span><a href=/tags/wire/>Wire</a>
+</span><span><a href=/tags/zap/>Zap</a>
+</span><span><a href=/tags/%E4%BA%8B%E5%8A%A1/>事务</a>
+</span><span><a href=/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/>数据库</a>
+</span><span><a href=/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/>源码分析</a>
+</span><span><a href=/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>设计模式</a></span></div></div><div class="sidebar-item sidebar-toc"><h3>Table of Contents</h3><nav id=TableOfContents><ul><li><a href=#关于>关于</a></li><li><a href=#特性>特性</a></li><li><a href=#概念>概念</a><ul><li><a href=#命令command>命令（Command）</a></li><li><a href=#标志flags>标志（Flags）</a></li></ul></li><li><a href=#简单使用>简单使用</a></li><li><a href=#command参数>Command参数</a></li><li><a href=#reference>Reference</a></li></ul></nav></div></div></aside></main><footer><div class="container-lg clearfix"><div class="col-12 footer"><span>&copy; 2019-2024
+<a href=https://daemon365.dev/>daemon365</a>
+| Powered by <a href=https://github.com/dsrkafuu/hugo-theme-fuji/ target=_blank>Fuji-v2</a> & <a href=https://gohugo.io/ target=_blank>Hugo</a></span></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js integrity="sha512-N9IJRoc3LaP3NDoiGkcPa4gG94kapGpaA5Zq9/Dr04uf5TbLFU5q0o8AbRhLKUUlp8QFS2u7S+Yti0U7QtuZvQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js integrity="sha512-q583ppKrCRc7N5O0n2nzUiJ+suUv7Et1JGels4bXOaMFQcamPk9HjdUknZuuFjBNs7tsMuadge5k9RzdmO+1GQ==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/components/prism-core.min.js integrity="sha512-LCKPTo0gtJ74zCNMbWw04ltmujpzSR4oW+fgN+Y1YclhM5ZrHCZQAJE4quEodcI/G122sRhSGU2BsSRUZ2Gu3w==" crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/prismjs@1.27.0/plugins/autoloader/prism-autoloader.min.js integrity="sha512-GP4x8UWxWyh4BMbyJGOGneiTbkrWEF5izsVJByzVLodP8CuJH/n936+yQDMJJrOPUHLgyPbLiGw2rXmdvGdXHA==" crossorigin=anonymous></script><script defer src=/assets/js/fuji.min.645f1123be695831f419ab54c1bcba327325895c740014006e57070d4f3e5d6b553e929c4b46f40ea707249e9c7f7c2a446d32a39ce7319f80a34525586a8e0f.js integrity="sha512-ZF8RI75pWDH0GatUwby6MnMliVx0ABQAblcHDU8+XWtVPpKcS0b0DqcHJJ6cf3wqRG0yo5znMZ+Ao0UlWGqODw=="></script></body></html>
